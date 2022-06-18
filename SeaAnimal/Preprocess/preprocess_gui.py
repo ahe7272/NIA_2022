@@ -118,12 +118,14 @@ def get_waterinfo(info_path):
     ws1 = wb['Sheet1']
     water_info = {}
     for c in range(1, 9):
-        if ws1.cell(2,c).value == None:
+        if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
             return False, water_info
         else:
             water_info[ws1.cell(1,c).value] = ws1.cell(2,c).value
+    return True, water_info
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
+def check_waterinfo(water_info):
     flag_array = [True for i in range(1, 9)]
     if 0 > water_info['Temp'] or water_info['Temp'] > 40:
         flag_array[0] = False
@@ -142,7 +144,7 @@ def get_waterinfo(info_path):
     if 0 > water_info['Depth']:
         flag_array[7] = False
 
-    return True, flag_array, water_info
+    return flag_array
 
 m = MakeGUI()
 window = m.makegui()
@@ -153,12 +155,13 @@ while True:
     if event == 'Run':
         Datapath = values['DataPath']
         info_path = values['WaterinfoPath']
-        flag, flag_array, water_info = get_waterinfo(info_path)
-        
+        flag, water_info = get_waterinfo(info_path)
+    
         if not flag:
-            sg.Popup('수질 환경정보 파일에 누락된 값이 있습니다.', keep_on_top=True)
+            sg.Popup('수질 환경정보 파일의 값이 숫자가 아니거나 누락되었습니다.', font =("Arial", 13), keep_on_top=True)
             continue
-            
+
+        flag_array = check_waterinfo(water_info)
         if False in flag_array:
             sg.Popup('수질 환경정보 파일에 정상 범위를 벗어난 값이 있습니다.', keep_on_top=True)
             continue

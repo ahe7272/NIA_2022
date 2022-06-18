@@ -22,6 +22,7 @@ class MakeGUI():
                   [sg.InputText('데이터의 경로(폴더)를 선택해주세요.', font =("Arial", 13), size = (40,1), key='DataPath'), sg.FolderBrowse('Select', font =("Arial", 13), size=(10, 1))],
                   [sg.Text('Input Excel File Directory',font =("Arial", 13), size=(30, 1))],
                   [sg.InputText('환경정보 데이터 파일(excel 파일)을 선택해주세요.', font =("Arial", 13), size = (40,1), key='WaterinfoPath'), sg.FileBrowse('Select', font =("Arial", 13), size=(10, 1))],
+
                   # [sg.FileBrowse('Select_DSMImage', size=(15, 1)), sg.InputText()],
                   # [sg.Button('GSD', size=(15, 1)), sg.InputText()],
                   [sg.Text('Sampling Intervals',font =("Arial", 13), size=(30, 1))],
@@ -73,6 +74,8 @@ def preprocess_video(video, interval, savepath, water_info):
     startframe = int(0 * fps)
     endframe = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) #끝나는시간 * fps
     frame_array = get_frame(startframe, endframe, fps * interval)
+    videonamemp4 = os.path.split(video)[-1]
+    videoname = os.path.splitext(videonamemp4)[0]
     cnt = 0
 
     for f in frame_array:
@@ -86,8 +89,8 @@ def preprocess_video(video, interval, savepath, water_info):
             clahe_img = clahe_image(image)
             h, w, _ = image.shape
             
-            cv2.imwrite(savepath + "/" + str(cnt) + '.jpg', clahe_img)
-            update_json(savepath + "/" + str(cnt), str(cnt), water_info, h, w)
+            cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
+            update_json(savepath + "/" + videoname +'_' + str(cnt), savepath + "/" + videoname +'_' + str(cnt), water_info, h, w)
             
         # print(str(cnt * interval) + "초")
         
@@ -103,29 +106,33 @@ def preprocess_img(image, savepath, water_info):
     h, w, _ = clahe_img.shape
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
+
+
 def get_waterinfo(info_path):
     wb = openpyxl.load_workbook(info_path)
     # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
     ws1 = wb['Sheet1']
     water_info = {}
     for c in range(1, 5):
-        if ws1.cell(2,c).value == None:
+        if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
             return False, water_info
         else:
             water_info[ws1.cell(1,c).value] = ws1.cell(2,c).value
+    return True, water_info
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
+def check_waterinfo(water_info):
     flag_array = [True for i in range(1, 5)]
     if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
-        flag_array[4] = False
+        flag_array[0] = False
     if 33.11 > water_info['lon'] or water_info['lon'] > 38.61:
-        flag_array[5] = False
+        flag_array[1] = False
     if 124.6 > water_info['lat'] or water_info['lat'] > 131.87:
-        flag_array[6] = False
+        flag_array[2] = False
     if 0 > water_info['Depth']:
-        flag_array[7] = False
-
-    return True, flag_array, water_info
+        flag_array[3] = False
+    
+    return flag_array
 
 m = MakeGUI()
 window = m.makegui()
@@ -136,33 +143,36 @@ while True:
     if event == 'Run':
         Datapath = values['DataPath']
         info_path = values['WaterinfoPath']
-        flag, flag_array, water_info = get_waterinfo(info_path)
-        
+        flag, water_info = get_waterinfo(info_path)
+    
         if not flag:
-            sg.Popup('수질 환경정보 파일에 누락된 값이 있습니다.', keep_on_top=True)
+            sg.Popup('수질 환경정보 파일의 값이 숫자가 아니거나 누락되었습니다.', font =("Arial", 13), keep_on_top=True)
             continue
-            
+
+        flag_array = check_waterinfo(water_info)
         if False in flag_array:
             sg.Popup('수질 환경정보 파일에 정상 범위를 벗어난 값이 있습니다.', keep_on_top=True)
             continue
 
         videolist = glob(Datapath + "/*.mp4")
+        imagelist = glob(Datapath + "/*.jpg")
+        datalength = len(videolist) + len(imagelist)
+        progress_bar.UpdateBar(0, datalength)
+
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
         for video in videolist:
-            progress_bar.UpdateBar(cnt, len(videolist))
+            progress_bar.UpdateBar(cnt, datalength)
             videoname = os.path.split(video)[-1]
             savepath = Datapath + '/' + os.path.splitext(videoname)[0]
             os.makedirs(savepath, exist_ok=True)
             preprocess_video(video, interval, savepath, water_info)
             cnt += 1
-
-        imagelist = glob(Datapath + "/*.jpg")
+   
         os.makedirs(Datapath + '/processed', exist_ok=True)
-        cnt = 1
         for image in imagelist:
-            progress_bar.UpdateBar(cnt, len(imagelist))
+            progress_bar.UpdateBar(cnt, datalength)
             imagenamejpg = os.path.split(image)[-1]
             imagename = os.path.splitext(imagenamejpg)[0]
             savepath = Datapath + '/processed'
