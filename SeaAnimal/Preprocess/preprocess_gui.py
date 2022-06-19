@@ -8,7 +8,7 @@ import json
 
 class MakeGUI():
     def makegui(self):
-        sg.theme('Black')
+        sg.theme('DarkAmber')
 
         # menu_def = [
         #             ['&File', ['&Open', '&Save', '&Properties', 'E&xit']],
@@ -38,7 +38,7 @@ class MakeGUI():
                   # [sg.Button('Exit')],
                   ]
 
-        window = sg.Window('Preprocessing data', layout, grab_anywhere = True).Finalize()
+        window = sg.Window('Preprocessing data', layout, element_justification='c', grab_anywhere = True).Finalize()
         return window
 
 def get_frame(start, end, fps):
@@ -94,7 +94,7 @@ def preprocess_video(video, interval, savepath, water_info):
             h, w, _ = image.shape
             
             cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
-            update_json(savepath + "/" + videoname +'_' + str(cnt), savepath + "/" + videoname +'_' + str(cnt), water_info, h, w)
+            update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)
             
         # print(str(cnt * interval) + "초")
         
