@@ -6,7 +6,7 @@ def get_resize_image(image, name):
     image = image.resize(size)
     image.save(name)
 
-array = ['Echinoid', 'Starfish', 'SeaHare', 'Snail', 'EckloniaCava', 'Sargassum']
+array = ['Asterias Amurensis', 'Asterina Pectinifera', 'Conch', 'EckloniaCava', 'Heliocidaris Crassispina','Hemicentrotus','Sargassum',  'SeaHare', 'Turbo Cornutus']
 for a in array:
     name = a + '.png'
     image = a + '.jpg'

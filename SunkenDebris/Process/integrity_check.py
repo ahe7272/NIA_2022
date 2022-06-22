@@ -16,7 +16,7 @@ def classname_check(objects):
 
 def attribute_value(objects):
     attr_error = ""
-    if len(objects) == 16:
+    if len(objects) == 12:
         return True, attr_error
     else:
         attr_error += '속성 개수 : ' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'
@@ -57,35 +57,7 @@ def getjson(jsonfile):
         objects = json.load(Jsonfile)
     return objects
 
-classname =['Asterias Amurensis', 'Asterina Pectinifera', 'Conch', 'EckloniaCava', 'Heliocidaris Crassispina','Hemicentrotus','Sargassum',  'SeaHare', 'Turbo Cornutus']
-
-def metacheck(xlsxfile):
-    errorlist = ""
-    flag = True
-    wb = openpyxl.load_workbook(xlsxfile) 
-    ws2 = wb['Sheet2']
-    for row in range(2, ws2.max_row+1):
-        if ws2.cell(row, 3).value not in classname:
-            errorlist += '\nExcel 파일 내 Class열' +str(row) +'행에 오타가 있습니다. 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False
-        try:
-            float(ws2.cell(row, 4).value)
-            if ws2.cell(row, 4).value >100 or ws2.cell(row, 4).value < 0: 
-                errorlist += '\nExcel 파일 내 Size열' +str(row) + '행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-                flag = False
-        except ValueError:
-            errorlist += '\nExcel 파일 내 Size열' +str(row) + '행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False            
-        try:
-            float(ws2.cell(row, 5).value) 
-            if ws2.cell(row, 5).value >1000 or ws2.cell(row, 5).value < 0: 
-                errorlist += '\nExcel 파일 내 Weight열' +str(row) + '행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-                flag = False
-        except ValueError:
-            errorlist += '\nExcel 파일 내 Weight열' +str(row) + '행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False
-    return errorlist, flag
-
+classname =['etc', 'fishtrap', 'glass', 'metal', 'plastic','rope','rubber',  'tire', 'wood']
 
 def check(jsonfile, minsize, path):
     errorlist = ""

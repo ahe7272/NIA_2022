@@ -8,49 +8,34 @@ import json
 
 class MakeGUI():
     def makegui(self):
-        sg.theme('Black')
-
-        # menu_def = [
-        #             ['&File', ['&Open', '&Save', '&Properties', 'E&xit']],
-        #             ['&Edit', ['&Paste', ['Special', 'Normal'], 'Undo']],
-        #             ['&Help', ['&About']]
-        #             ]
+        sg.theme('DarkAmber')
 
         layout = [
-                  # [sg.Menu(menu_def, tearoff = False, pad = (20,1))],
-                  [sg.Text('Input Data Directory',font =("Arial", 13), size=(30, 1))],
-                  [sg.InputText('데이터의 경로(폴더)를 선택해주세요.', font =("Arial", 13), size = (40,1), key='DataPath'), sg.FolderBrowse('Select', font =("Arial", 13), size=(10, 1))],
-                  [sg.Text('Input Excel File Directory',font =("Arial", 13), size=(30, 1))],
-                  [sg.InputText('환경정보 데이터 파일(excel 파일)을 선택해주세요.', font =("Arial", 13), size = (40,1), key='WaterinfoPath'), sg.FileBrowse('Select', font =("Arial", 13), size=(10, 1))],
-
-                  # [sg.FileBrowse('Select_DSMImage', size=(15, 1)), sg.InputText()],
-                  # [sg.Button('GSD', size=(15, 1)), sg.InputText()],
-                  [sg.Text('Sampling Intervals',font =("Arial", 13), size=(30, 1))],
-                  [sg.InputText('비디오 프레임 추출 간격(초)를 입력해주세요.', font =("Arial", 13),  size = (40,1), key='intervals')],
-                  [sg.Button('Run',font =("Arial", 13), size=(40,1), key='Run')],
-                  # [sg.Output(size=(55, 6))],
+                  [sg.Text('데이터의 경로(폴더)',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.InputText('Data Folder', font =("Arial", 13), size = (30,1), key='DataPath'), sg.FolderBrowse('SELECT', font =("Arial", 13, 'bold'), size=(10, 1))],
+                  [sg.Text('환경정보 데이터 파일(excel 파일)을 선택해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.InputText('Excel File', font =("Arial", 13), size = (30,1), key='WaterinfoPath'), sg.FileBrowse('SELECT', font =("Arial", 13, 'bold'), size=(10, 1))],
+                  [sg.Text('비디오 프레임 추출 간격(초)를 입력해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.InputText('Sampling Intervals', font =("Arial", 13),  size = (30,1), key='intervals'), sg.Button('Run',font =("Arial", 13, 'bold'), size=(10,1), key='Run')],
                   [sg.ProgressBar(1, orientation='h', size=(40,20), key='progress')]
-                  # [sg.Button('result', size=(15, 1)), sg.InputText(size=(45,3), key=('-result-'))],
-                  # [sg.Button('ShowImage', size=(37, 1)), sg.button('Exit', size=(17,1))],
-                  
-                  # [sg.Slider(orientation = 'horizontal', key = 'stSlider', range = (1, 100))],
-                  # [sg.ProgressBar(50, orientation = 'h', size = (20, 20), border_width = 4, key = 'progbar', bar_color = ['Red', 'Green'])],
-                  # [sg.Button('Exit')],
-                  ]
+                 ]
 
-        window = sg.Window('Preprocessing data', layout, grab_anywhere = True).Finalize()
+        window = sg.Window('Preprocessing data', layout, element_justification='c', grab_anywhere = True).Finalize()
         return window
 
 def get_frame(start, end, fps):
     frame_array = [i for i in range(start, end, fps)]
     return frame_array
 
-# information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def update_json(jsonname, imagePath, water_info, h, w):
     objects = getjsonform()
     objects['imagePath'] = imagePath + '.jpg'
     objects['imageHeight'] = h 
     objects['imageWidth'] = w
+    objects['Temp'] = water_info['Temp']
+    objects['Salinity'] = water_info['Salinity']
+    objects['DO'] = water_info['Do']
+    objects['pH'] = water_info['pH']
     objects['Transparency'] = water_info['Transparency']
     objects['Longitude'] = water_info['lon']
     objects['Latitude'] = water_info['lat']
@@ -90,7 +75,7 @@ def preprocess_video(video, interval, savepath, water_info):
             h, w, _ = image.shape
             
             cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
-            update_json(savepath + "/" + videoname +'_' + str(cnt), savepath + "/" + videoname +'_' + str(cnt), water_info, h, w)
+            update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)
             
         # print(str(cnt * interval) + "초")
         
@@ -113,7 +98,7 @@ def get_waterinfo(info_path):
     # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
     ws1 = wb['Sheet1']
     water_info = {}
-    for c in range(1, 5):
+    for c in range(1, 9):
         if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
             return False, water_info
         else:
@@ -122,16 +107,24 @@ def get_waterinfo(info_path):
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def check_waterinfo(water_info):
-    flag_array = [True for i in range(1, 5)]
-    if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
+    flag_array = [True for i in range(1, 9)]
+    if 0 > water_info['Temp'] or water_info['Temp'] > 40:
         flag_array[0] = False
-    if 33.11 > water_info['lon'] or water_info['lon'] > 38.61:
+    if 0 > water_info['Salinity'] or water_info['Salinity'] > 40:
         flag_array[1] = False
-    if 124.6 > water_info['lat'] or water_info['lat'] > 131.87:
+    if 0 > water_info['Do'] or water_info['Do'] > 15:
         flag_array[2] = False
-    if 0 > water_info['Depth']:
+    if 6 > water_info['pH'] or water_info['pH'] > 9:
         flag_array[3] = False
-    
+    if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
+        flag_array[4] = False
+    if 33.11 > water_info['lon'] or water_info['lon'] > 38.61:
+        flag_array[5] = False
+    if 124.6 > water_info['lat'] or water_info['lat'] > 131.87:
+        flag_array[6] = False
+    if 0 > water_info['Depth']:
+        flag_array[7] = False
+
     return flag_array
 
 m = MakeGUI()
@@ -162,20 +155,18 @@ while True:
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
+        os.makedirs(Datapath + '/processed', exist_ok=True)
+        savepath = Datapath + '/processed'
         for video in videolist:
             progress_bar.UpdateBar(cnt, datalength)
             videoname = os.path.split(video)[-1]
-            savepath = Datapath + '/' + os.path.splitext(videoname)[0]
-            os.makedirs(savepath, exist_ok=True)
             preprocess_video(video, interval, savepath, water_info)
             cnt += 1
    
-        os.makedirs(Datapath + '/processed', exist_ok=True)
         for image in imagelist:
             progress_bar.UpdateBar(cnt, datalength)
             imagenamejpg = os.path.split(image)[-1]
             imagename = os.path.splitext(imagenamejpg)[0]
-            savepath = Datapath + '/processed'
             preprocess_img(image, savepath, water_info)
             cnt += 1
     if event in (None, 'Exit'):
