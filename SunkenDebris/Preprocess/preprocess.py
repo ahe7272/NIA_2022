@@ -86,15 +86,22 @@ def preprocess_img(image, savepath, water_info):
     h, w, _ = clahe_img.shape
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
-
-
 def get_waterinfo(info_path):
-    wb = openpyxl.load_workbook(info_path)
-    # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
-    ws1 = wb['Sheet1']
-    water_info = {}
+    water_info_cols = ['Transparency', 'Longitude', 'Latitude', 'Depth']
+    try:
+        wb = openpyxl.load_workbook(info_path)
+        # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
+        ws1 = wb['Sheet1']
+        water_info = {}
+    except:
+        sg.Popup('excel파일이 경로에 없거나 Sheet 네임이 \n "Sheet1"으로 정확하게 입력되었는지 확인해주세요.', font =("Arial", 15), keep_on_top=True)
+    
     for c in range(1, 5):
+        if ws1.cell(1,c).value not in water_info_cols:
+            sg.Popup('환경정보 파일의 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            return False, water_info
         if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
+            sg.Popup('환경정보 값이 누락되었거나 문자가 들어 있습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info
         else:
             water_info[ws1.cell(1,c).value] = ws1.cell(2,c).value
@@ -105,13 +112,12 @@ def check_waterinfo(water_info):
     flag_array = [True for i in range(1, 5)]
     if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
         flag_array[0] = False
-    if 33.11 > water_info['lon'] or water_info['lon'] > 38.61:
+    if 33.11 > water_info['Longitude'] or water_info['Longitude'] > 38.61:
         flag_array[1] = False
-    if 124.6 > water_info['lat'] or water_info['lat'] > 131.87:
+    if 124.6 > water_info['Latitude'] or water_info['Latitude'] > 131.87:
         flag_array[2] = False
     if 0 > water_info['Depth']:
         flag_array[3] = False
-    
     return flag_array
 
 m = MakeGUI()
@@ -119,14 +125,13 @@ window = m.makegui()
 
 while True:    
     event, values = window.read()     
-    progress_bar = window.FindElement('progress')
+    progress_bar = window.FindElement['progress']
     if event == 'Run':
         Datapath = values['DataPath']
         info_path = values['WaterinfoPath']
         flag, water_info = get_waterinfo(info_path)
     
         if not flag:
-            sg.Popup('수질 환경정보 파일의 값이 숫자가 아니거나 누락되었습니다.', font =("Arial", 13), keep_on_top=True)
             continue
 
         flag_array = check_waterinfo(water_info)
@@ -142,8 +147,8 @@ while True:
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
-        os.makedirs(Datapath + '/processed', exist_ok=True)
-        savepath = Datapath + '/processed'
+        os.makedirs(os.path.split(Datapath)[0] + '/Preprocessed', exist_ok=True)
+        savepath = os.path.split(Datapath)[0] + '/Preprocessed'
         for video in videolist:
             progress_bar.UpdateBar(cnt, datalength)
             videoname = os.path.split(video)[-1]

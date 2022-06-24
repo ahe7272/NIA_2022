@@ -1,8 +1,9 @@
 import os
 import json
 import numpy as np
-import shutil
+import glob
 import openpyxl
+import shutil
 
 def classname_check(objects):
     classname_error = ""
@@ -10,16 +11,16 @@ def classname_check(objects):
     classnameflag = True
     for t in range(total_obj):
         if objects['shapes'][t]['label'] not in classname:
-            classname_error += objects['shapes'][t]['label'] + '가 잘못되었습니다.' + '\n'
+            classname_error += 'Annotation 이름 에러!\n내용: ' + objects['shapes'][t]['label'] + '\n'
             classnameflag = False
     return classnameflag, classname_error
 
 def attribute_value(objects):
     attr_error = ""
-    if len(objects) == 16:
+    if len(objects) == 17:
         return True, attr_error
     else:
-        attr_error += '속성 개수 : ' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'
+        attr_error += '속성 개수 에러!\n' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'
         return False, attr_error
 
 def size(objects, minsize):
@@ -57,43 +58,43 @@ def getjson(jsonfile):
         objects = json.load(Jsonfile)
     return objects
 
-classname =['Asterias Amurensis', 'Asterina Pectinifera', 'Conch', 'EckloniaCava', 'Heliocidaris Crassispina','Hemicentrotus','Sargassum',  'SeaHare', 'Turbo Cornutus']
+classname =['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Ecklonia_cava', 'Heliocidaris_crassispina','Hemicentrotus','Sargassum',  'Sea_hare', 'Turbo_cornutus']
 
-def metacheck(xlsxfile):
+def metacheck(path):
     errorlist = ""
     flag = True
-    wb = openpyxl.load_workbook(xlsxfile) 
-    ws2 = wb['Sheet2']
-    for row in range(2, ws2.max_row+1):
-        if ws2.cell(row, 3).value not in classname:
-            errorlist += '\nExcel 파일 내 Class열' +str(row) +'행에 오타가 있습니다. 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False
-        try:
-            float(ws2.cell(row, 4).value)
-            if ws2.cell(row, 4).value >100 or ws2.cell(row, 4).value < 0: 
-                errorlist += '\nExcel 파일 내 Size열' +str(row) + '행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
+    try:
+        wb = openpyxl.load_workbook(path) 
+        ws2 = wb['Sheet2']
+        for row in range(2, ws2.max_row+1):
+            try:
+                float(ws2.cell(row, 3).value)
+                if ws2.cell(row, 3).value >100 or ws2.cell(row, 3).value < 0: 
+                    errorlist += 'Size 에러!\nExcel 파일 내 Size열 ' +str(row) + ' 행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.\n'
+                    flag = False
+            except ValueError:
+                errorlist += 'Size 에러!\nExcel 파일 내 Size열 ' +str(row) + ' 행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.\n'
+                flag = False            
+            try:
+                float(ws2.cell(row, 4).value) 
+                if ws2.cell(row, 4).value >1000 or ws2.cell(row, 4).value < 0: 
+                    errorlist += 'Weight 에러!\nExcel 파일 내 Weight열 ' +str(row) + ' 행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.\n'
+                    flag = False
+            except ValueError:
+                errorlist += 'Weight 에러!\nExcel 파일 내 Weight열 ' +str(row) + ' 행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.\n'
                 flag = False
-        except ValueError:
-            errorlist += '\nExcel 파일 내 Size열' +str(row) + '행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False            
-        try:
-            float(ws2.cell(row, 5).value) 
-            if ws2.cell(row, 5).value >1000 or ws2.cell(row, 5).value < 0: 
-                errorlist += '\nExcel 파일 내 Weight열' +str(row) + '행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-                flag = False
-        except ValueError:
-            errorlist += '\nExcel 파일 내 Weight열' +str(row) + '행의 값이 숫자가 아닙니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.'
-            flag = False
-    return errorlist, flag
-
-
+        return flag, errorlist
+    except:
+        return flag, errorlist
+        
 def check(jsonfile, minsize, path):
     errorlist = ""
     jsonpath = path + '/' + jsonfile
     imagefile = os.path.splitext(jsonfile)[0] + '.jpg'
     imagepath = path + '/' + imagefile
-    donepath = os.path.split(path)[0] + '/Done/'
-    os.makedirs(donepath, exist_ok=True)
+    processed_path = os.path.split(path)[0] + '/Processed/'
+    excelpath = path + '/*.xlsx'
+    os.makedirs(processed_path, exist_ok=True)
 
     objects = getjson(jsonpath)
     objects = size(objects, minsize)
@@ -104,18 +105,24 @@ def check(jsonfile, minsize, path):
         classes = True
     else:
         classes = False
-        errorlist += str(imagefile) +' 파일 오류: ' + classname_error + '\n'
+        errorlist += str(imagefile) +' 파일 - ' + classname_error + '\n'
 
     attributeflag, attribute_error = attribute_value(objects)
     if attributeflag:
         attribute = True
     else:
         attribute = False
-        errorlist += str(imagefile) + ' 파일 오류: ' + attribute_error + '\n'
-        
-    if classes and attribute:
-        shutil.move(jsonpath, donepath + jsonfile)
-        shutil.move(imagepath, donepath + imagefile)
+        errorlist += str(imagefile) + ' 파일 - ' + attribute_error + '\n'
+    
+    metaflag, meta_error = metacheck(glob.glob(excelpath)[0])
+    if metaflag:
+        meta = True
+    else:
+        meta = False
+
+    if classes and attribute and meta:
+        shutil.move(jsonpath, processed_path + jsonfile)
+        shutil.move(imagepath, processed_path + imagefile)
     return errorlist 
     
 

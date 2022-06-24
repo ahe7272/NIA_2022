@@ -5,6 +5,7 @@ import openpyxl
 import cv2
 from jsonformat import getjsonform
 import json
+import shutil
 
 class MakeGUI():
     def makegui(self):
@@ -13,9 +14,9 @@ class MakeGUI():
         layout = [
                   [sg.Text('데이터의 경로(폴더)',font =("Arial", 13, 'bold'), size=(40, 1))],
                   [sg.InputText('Data Folder', font =("Arial", 13), size = (30,1), key='DataPath'), sg.FolderBrowse('SELECT', font =("Arial", 13, 'bold'), size=(10, 1))],
-                  [sg.Text('환경정보 데이터 파일(excel 파일)을 선택해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.Text('환경정보 데이터 파일(excel 파일)',font =("Arial", 13, 'bold'), size=(40, 1))],
                   [sg.InputText('Excel File', font =("Arial", 13), size = (30,1), key='WaterinfoPath'), sg.FileBrowse('SELECT', font =("Arial", 13, 'bold'), size=(10, 1))],
-                  [sg.Text('비디오 프레임 추출 간격(초)를 입력해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.Text('비디오 프레임 추출 간격(초).',font =("Arial", 13, 'bold'), size=(40, 1))],
                   [sg.InputText('Sampling Intervals', font =("Arial", 13),  size = (30,1), key='intervals'), sg.Button('Run',font =("Arial", 13, 'bold'), size=(10,1), key='Run')],
                   [sg.ProgressBar(1, orientation='h', size=(40,20), key='progress')]
                  ]
@@ -32,13 +33,13 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['imagePath'] = imagePath + '.jpg'
     objects['imageHeight'] = h 
     objects['imageWidth'] = w
-    objects['Temp'] = water_info['Temp']
+    objects['Temperature'] = water_info['Temperature']
     objects['Salinity'] = water_info['Salinity']
-    objects['DO'] = water_info['Do']
+    objects['DO'] = water_info['DO']
     objects['pH'] = water_info['pH']
     objects['Transparency'] = water_info['Transparency']
-    objects['Longitude'] = water_info['lon']
-    objects['Latitude'] = water_info['lat']
+    objects['Longitude'] = water_info['Longitude']
+    objects['Latitude'] = water_info['Latitude']
     objects['Depth'] = water_info['Depth']
 
     with open(jsonname + '.json', 'w') as jsonfile:
@@ -76,9 +77,7 @@ def preprocess_video(video, interval, savepath, water_info):
             
             cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
             update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)
-            
-        # print(str(cnt * interval) + "초")
-        
+                    
         if cv2.waitKey(10) == 27:
             break    
 
@@ -91,40 +90,55 @@ def preprocess_img(image, savepath, water_info):
     h, w, _ = clahe_img.shape
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
-
-
 def get_waterinfo(info_path):
-    wb = openpyxl.load_workbook(info_path)
-    # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
-    ws1 = wb['Sheet1']
+    water_info_cols = ['Temperature', 'Salinity', 'DO', 'pH', 'Transparency', 'Longitude', 'Latitude', 'Depth']
+    meta_info_cols = ['Name', 'Class', 'Size', 'Weight']
+    try:
+        wb = openpyxl.load_workbook(info_path)
+        # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
+        ws1 = wb['Sheet1']
+        ws2 = wb['Sheet2']
+    except:
+        sg.Popup('excel파일이 경로에 없거나 Sheet 네임이 \n "Sheet1"과 "Sheet2"로 정확하게 입력되었는지 확인해주세요.', font =("Arial", 15), keep_on_top=True)
     water_info = {}
-    for c in range(1, 9):
-        if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
-            return False, water_info
+    meta_imgs = []
+    for c1 in range(1, 9):
+        if ws1.cell(1, c1).value not in water_info_cols:
+            sg.Popup('환경정보 파일의 Sheet1 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            return False, water_info, meta_imgs
+        if (ws1.cell(2,c1).value == None) or (type(ws1.cell(2,c1).value) == str):
+            sg.Popup('환경정보 값이 누락되었거나 문자가 들어 있습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            return False, water_info, meta_imgs
         else:
-            water_info[ws1.cell(1,c).value] = ws1.cell(2,c).value
-    return True, water_info
+            water_info[ws1.cell(1,c1).value] = ws1.cell(2,c1).value
+    for c2 in range(1, 5):
+        if ws2.cell(1, c2).value not in meta_info_cols:
+            sg.Popup('환경정보 파일의 Sheet2 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            return False, water_info, meta_imgs  
+    for r in range(2, ws2.max_row+1):
+        if ws2.cell(r, 1).value not in meta_imgs:
+            meta_imgs.append(ws2.cell(r, 1).value)
+    return True, water_info, meta_imgs
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def check_waterinfo(water_info):
     flag_array = [True for i in range(1, 9)]
-    if 0 > water_info['Temp'] or water_info['Temp'] > 40:
+    if 0 > water_info['Temperature'] or water_info['Temperature'] > 40:
         flag_array[0] = False
     if 0 > water_info['Salinity'] or water_info['Salinity'] > 40:
         flag_array[1] = False
-    if 0 > water_info['Do'] or water_info['Do'] > 15:
+    if 0 > water_info['DO'] or water_info['DO'] > 15:
         flag_array[2] = False
     if 6 > water_info['pH'] or water_info['pH'] > 9:
         flag_array[3] = False
     if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
         flag_array[4] = False
-    if 33.11 > water_info['lon'] or water_info['lon'] > 38.61:
+    if 33.11 > water_info['Longitude'] or water_info['Longitude'] > 38.61:
         flag_array[5] = False
-    if 124.6 > water_info['lat'] or water_info['lat'] > 131.87:
+    if 124.6 > water_info['Latitude'] or water_info['Latitude'] > 131.87:
         flag_array[6] = False
     if 0 > water_info['Depth']:
         flag_array[7] = False
-
     return flag_array
 
 m = MakeGUI()
@@ -132,14 +146,13 @@ window = m.makegui()
 
 while True:    
     event, values = window.read()     
-    progress_bar = window.FindElement('progress')
+    progress_bar = window['progress']
     if event == 'Run':
         Datapath = values['DataPath']
         info_path = values['WaterinfoPath']
-        flag, water_info = get_waterinfo(info_path)
-    
+        flag, water_info, meta_imgs = get_waterinfo(info_path)
+        info_name = os.path.split(info_path)[-1]
         if not flag:
-            sg.Popup('수질 환경정보 파일의 값이 숫자가 아니거나 누락되었습니다.', font =("Arial", 13), keep_on_top=True)
             continue
 
         flag_array = check_waterinfo(water_info)
@@ -155,20 +168,33 @@ while True:
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
-        os.makedirs(Datapath + '/processed', exist_ok=True)
-        savepath = Datapath + '/processed'
+        os.makedirs(os.path.split(Datapath)[0] + '/Preprocessed', exist_ok=True)
+        savepath = os.path.split(Datapath)[0] + '/Preprocessed'
+        
+        shutil.copy2(Datapath + '/' + info_name, savepath + '/' + info_name)
         for video in videolist:
             progress_bar.UpdateBar(cnt, datalength)
             videoname = os.path.split(video)[-1]
             preprocess_video(video, interval, savepath, water_info)
             cnt += 1
-   
         for image in imagelist:
             progress_bar.UpdateBar(cnt, datalength)
             imagenamejpg = os.path.split(image)[-1]
             imagename = os.path.splitext(imagenamejpg)[0]
             preprocess_img(image, savepath, water_info)
             cnt += 1
+            if imagename in meta_imgs:
+                meta_imgs.remove(imagename)
+
+        noimg_error = ""
+        if len(meta_imgs) > 0:
+            for i in meta_imgs:
+                noimg_error += str(i) + '\n'
+                meta_imgs.remove(i)
+                continue
+            sg.Popup('Excel 파일에 있는 이미지 '+ noimg_error+'가 해당 폴더에 없습니다. \n다시 확인하고 정제해 주세요.', font =("Arial", 13), keep_on_top=True)
+        
+        
     if event in (None, 'Exit'):
         break
 
