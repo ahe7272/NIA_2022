@@ -1,23 +1,35 @@
-from multiprocessing.dummy import freeze_support
 import PySimpleGUI as sg
-import base64
 import pyperclip
 from glob import glob
 import os
 from integrity_check import check, metacheck
 import subprocess
-import multiprocessing as mp
 import sys
 import json
 import openpyxl
 import numpy as np
+import requests
+from io import BytesIO
+import pickle
+from PIL.ExifTags import TAGS
+from PIL import Image
+from glob import glob
+import piexif
+
+
+# 전체 공유 주소: https://ifh.cc/v-Xthdhr.WYZ2DV.58vJQw.r9g0lJ.xx07bk.G9dfGR.zQpXO1.m2Rpvt.PSZRNZ
+
+Asterias_amurensis = BytesIO(requests.get('https://ifh.cc/g/Xthdhr.png').content).read()
+Asterina_pectinifera = BytesIO(requests.get('https://ifh.cc/g/WYZ2DV.png').content).read()
+Conch = BytesIO(requests.get('https://ifh.cc/g/58vJQw.png').content).read()
+Ecklonia_cava = BytesIO(requests.get('https://ifh.cc/g/r9g0lJ.png').content).read()
+Heliocidaris_crassispina = BytesIO(requests.get('https://ifh.cc/g/xx07bk.png').content).read()
+Hemicentrotus = BytesIO(requests.get('https://ifh.cc/g/G9dfGR.png').content).read()
+Sargassum = BytesIO(requests.get('https://ifh.cc/g/zQpXO1.png').content).read()
+Sea_hare = BytesIO(requests.get('https://ifh.cc/g/m2Rpvt.png').content).read()
+Turbo_cornutus = BytesIO(requests.get('https://ifh.cc/g/PSZRNZ.png').content).read()
 
 class MakeGUI():
-    def getimage(self, image):
-        with open(image, 'rb') as img:
-            base64_string = base64.b64encode(img.read())    
-        return base64_string
-
     def makegui(self):
         sg.theme('DarkAmber')
         Step1 = [
@@ -26,21 +38,21 @@ class MakeGUI():
                   [sg.Text('  ID  ', font =("Arial", 15)), sg.InputText(key='userID', font =("Arial", 15), size = (23,1)), sg.Button('Labelme', font =("Arial", 15, 'bold'), size=(12, 1))],
                   [sg.Text(' Asterias_amurensis ', font =("Arial", 12)), sg.Text('  Asterina_pectinifera  ', font =("Arial", 12)), sg.Text('           Conch',font =("Arial", 12))], 
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Asterias_amurensis.png'), key='Asterias_amurensis'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Asterina_pectinifera.png'), key='Asterina_pectinifera'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Conch.png'), key='Conch')
+                    sg.Button('', image_data = Asterias_amurensis,  key='Asterias_amurensis'),
+                    sg.Button('', image_data = Asterina_pectinifera, key='Asterina_pectinifera'),
+                    sg.Button('', image_data = Conch, key='Conch')
                   ],
                   [sg.Text('      Ecklonia_cava    ', font =("Arial", 12)), sg.Text('Heliocidaris_crassispina', font =("Arial", 12)), sg.Text('   Hemicentrotus', font =("Arial", 12))],
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Ecklonia_cava.png'), key='Ecklonia_cava'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Heliocidaris_crassispina.png'), key='Heliocidaris_crassispina'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Hemicentrotus.png'), key='Hemicentrotus')
+                    sg.Button('', image_data = Ecklonia_cava, key='Ecklonia_cava'),
+                    sg.Button('', image_data = Heliocidaris_crassispina, key='Heliocidaris_crassispina'),
+                    sg.Button('', image_data = Hemicentrotus, key='Hemicentrotus')
                   ],
                   [sg.Text('        Sargassum        ', font =("Arial", 12)), sg.Text('            Sea_hare            ', font =("Arial", 12)), sg.Text('   Turbo_cornutus', font =("Arial", 12))],
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Sargassum.png'), key='Sargassum'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Sea_hare.png'), key='Sea_hare'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SeaAnimal/Process/example_image/Turbo_cornutus.png'), key='Turbo_cornutus')
+                    sg.Button('', image_data = Sargassum, key='Sargassum'),
+                    sg.Button('', image_data = Sea_hare, key='Sea_hare'),
+                    sg.Button('', image_data = Turbo_cornutus, key='Turbo_cornutus')
                   ]
                 ]
         Step2 = [
@@ -76,17 +88,45 @@ class MakeGUI():
         window = sg.Window('Processing Data', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
         return window
 
-def where_labelme():
-    return os.system('where labelme')
+def changeexif(imagefile, ID):
+    image = Image.open(imagefile)
+    exifData = image._getexif()
+    
+    if exifData is None:
+        exifData = {}
+
+    data = pickle.dumps(ID)
+    exif_ifd = {piexif.ExifIFD.UserComment: data}
+    zeroth_ifd = {piexif.ImageIFD.Artist: ID.encode('ascii')}
+    exif_dict = {"0th" : zeroth_ifd, "Exif": exif_ifd}
+
+    exif_dat = piexif.dump(exif_dict)
+    image.save(imagefile, exif=exif_dat)
+
+
 def runLabelme():
-    # python_file = subprocess.getoutput('where pythonw.exe').split('\n')[0] 
-    # labelme_file =  python_file[:-11] + "/Lib/site-packages/labelme/__main__.py"
-    # if np.__version__[:4] == '1.22':
+    conda_dirs = ["c:/Users/users/anaconda3", "d:/Users/users/anaconda3", 
+                  "c:/Users/Admin/anaconda3", "d:/Users/Admin/anaconda3", "c:/Users/admin/anaconda3", "d:/Users/admin/anaconda3", 
+                  "c:/Users/Administrator/anaconda3", "d:/Users/Administrator/anaconda3",
+                  "c:/Programdata/anaconda3", "d:/Programdata/anaconda3", 
+                  "c:/Users/{}/Anaconda3".format(os.getlogin()), "d:/Users/{}/Anaconda3".format(os.getlogin()), 
+                  "c:/사용자/{}/Anaconda3".format(os.getlogin()), "d:/사용자/{}/Anaconda3".format(os.getlogin()),
+                  "c:/anaconda3", "c:/Anaconda3", "d:/anaconda3", "d:/Anaconda3"]
+    try:
+        for Dir in conda_dirs:
+            if os.path.isdir(Dir):
+                python_file = Dir + "/envs/nia/pythonw.exe"
+                labelme_file =  python_file[:-11] + "/Lib/site-packages/labelme/__main__.py"
+
+            if Dir == "no dir":
+                sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
         
-    #     subprocess.Popen(python_file + ' ' + labelme_file)
-    # p = mp.Process(target = where_labelme)
-    # p.start()
-    subprocess.Popen(subprocess.getoutput('where labelme'), shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+        if np.__version__[:4] == '1.22':
+        
+            subprocess.Popen(python_file + ' ' + labelme_file,  stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+
+    except:
+        sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
 
 try:
     os.chdir(sys._MEIPASS)
@@ -115,13 +155,14 @@ try:
                 imagename = os.path.splitext(jpgfile)[0]
                 jsonfile = Path + '/' + imagename + '.json'
                 imagefile = Path + '/' + imagename + '.jpg'
+                changeexif(image, userID)
             runLabelme()
 
         if event == 'Meta':
             jsonlist = glob(values['Path'] + '/*.json')
             meta_success = True
             try: 
-                flag, meta_error = metacheck(glob(values['Path'] + '/*.xlsx')[0])
+                flag, meta_error = metacheck(glob(values['Path'] + '/*.xlsx'))
                 if len(meta_error) >0 :
                     sg.Popup(meta_error, font =("Arial", 15), keep_on_top=True)
                     continue
@@ -180,7 +221,6 @@ try:
             jsonlist = glob(values['Path'] + '/*.json')
             jsonerrors = ""
             metaerrors = ""
-            excelpath = glob(values['Path'] + '/*.xlsx')[0]
             if values['userID'] == "":
                 jsonerrors += 'ID 에러!\nID를 정확하게 입력하고 Metadata 입력을 다시 진행해 주세요.\n'
             for Json in jsonlist:
@@ -190,7 +230,6 @@ try:
                 sg.Popup(jsonerrors, font =("Arial", 15), keep_on_top=True)
             else:
                 sg.Popup("작업완료된 파일이 Processed 폴더에 저장되었습니다. \n 작업 폴더에 남은 파일이 없는지 확인해주세요.", font =("Arial", 15), keep_on_top=True)
-                sg.Popup("모두 Processed 폴더로 옮겨졌다면 Exit을 누르시고 NAS에 업로드를 시작해주세요.\n 담당 PM님과 소통하시기 바라며 오늘도 수고하셨습니다.", font =("Arial", 15), keep_on_top=True)
         if event == sg.WIN_CLOSED or event in (None, 'Exit'):
             break
         if event in (None, 'Exit'):

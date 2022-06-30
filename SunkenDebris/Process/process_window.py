@@ -1,5 +1,4 @@
 import PySimpleGUI as sg
-import base64
 import pyperclip
 from glob import glob
 import os
@@ -8,13 +7,28 @@ import subprocess
 import sys
 import json
 import numpy as np
+import requests
+from io import BytesIO
+import pickle
+from PIL.ExifTags import TAGS
+from PIL import Image
+from glob import glob
+import piexif
+
+# 전체 공유 주소: https://ifh.cc/v-8x5yaf.oCrngF.yR4Rzq.TvAS0x.F4Bj7d.65Gdtp.Z6gSOf.PW0b0s.9tHWQf
+
+Fish_net = BytesIO(requests.get('https://ifh.cc/g/8x5yaf.png').content).read()
+Fish_trap = BytesIO(requests.get('https://ifh.cc/g/oCrngF.png').content).read()
+Glass = BytesIO(requests.get('https://ifh.cc/g/yR4Rzq.png').content).read()
+Metal = BytesIO(requests.get('https://ifh.cc/g/TvAS0x.png').content).read()
+Plastic = BytesIO(requests.get('https://ifh.cc/g/F4Bj7d.png').content).read()
+Processed_wood = BytesIO(requests.get('https://ifh.cc/g/65Gdtp.png').content).read()
+Rope = BytesIO(requests.get('https://ifh.cc/g/Z6gSOf.png').content).read()
+Rubber_etc = BytesIO(requests.get('https://ifh.cc/g/PW0b0s.png').content).read()
+Rubber_tire = BytesIO(requests.get('https://ifh.cc/g/9tHWQf.png').content).read()
+
 
 class MakeGUI():
-    def getimage(self, image):
-        with open(image, 'rb') as img:
-            base64_string = base64.b64encode(img.read())    
-        return base64_string
-
     def makegui(self):
         sg.theme('DarkAmber')
         Step1 = [
@@ -23,21 +37,21 @@ class MakeGUI():
                   [sg.Text('  ID  ', font =("Arial", 15)), sg.InputText(key='userID', font =("Arial", 15), size = (23,1)), sg.Button('Labelme', font =("Arial", 15, 'bold'), size=(12, 1))],
                   [sg.Text('      Fish_net      ', font =("Arial", 15, 'bold')), sg.Text('     Fish_trap      ', font =("Arial",  15, 'bold')), sg.Text('       Glass',font =("Arial",  15, 'bold'))], 
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Fish_net.png'), key='Fish_net'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Fish_trap.png'), key='Fish_trap'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Glass.png'), key='Glass')
+                    sg.Button('', image_data=Fish_net, key='Fish_net'),
+                    sg.Button('', image_data=Fish_trap, key='Fish_trap'),
+                    sg.Button('', image_data=Glass, key='Glass')
                   ],
                   [sg.Text('        Metal        ', font =("Arial",  15, 'bold')), sg.Text('       Plastic     ', font =("Arial",  15, 'bold')), sg.Text('Processed_wood', font =("Arial",  15, 'bold'))],
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Metal.png'), key='Metal'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Plastic.png'), key='Plastic'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Processed_wood.png'), key='Processed_wood')
+                    sg.Button('', image_data=Metal, key='Metal'),
+                    sg.Button('', image_data=Plastic, key='Plastic'),
+                    sg.Button('', image_data=Processed_wood, key='Processed_wood')
                   ],
                   [sg.Text('        Rope       ', font =("Arial",  15, 'bold')), sg.Text('     Rubber_etc     ', font =("Arial",  15, 'bold')), sg.Text('Rubber_tire', font =("Arial",  15, 'bold'))],
                   [
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Rope.png'), key='Rope'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Rubber_etc.png'), key='Rubber_etc'),
-                    sg.Button('', image_data=self.getimage('C:/Users/Administrator/Documents/Github/NIA_2022/SunkenDebris/Process/example_image/Rubber_tire.png'), key='Rubber_tire')
+                    sg.Button('', image_data=Rope, key='Rope'),
+                    sg.Button('', image_data=Rubber_etc, key='Rubber_etc'),
+                    sg.Button('', image_data=Rubber_tire, key='Rubber_tire')
                   ]
                 ]
         Step2 = [
@@ -66,12 +80,45 @@ class MakeGUI():
         window = sg.Window('Processing Data', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
         return window
         
+def changeexif(imagefile, ID):
+    image = Image.open(imagefile)
+    exifData = image._getexif()
+    
+    if exifData is None:
+        exifData = {}
+
+    data = pickle.dumps(ID)
+    exif_ifd = {piexif.ExifIFD.UserComment: data}
+    zeroth_ifd = {piexif.ImageIFD.Artist: ID.encode('ascii')}
+    exif_dict = {"0th" : zeroth_ifd, "Exif": exif_ifd}
+
+    exif_dat = piexif.dump(exif_dict)
+    image.save(imagefile, exif=exif_dat)
+
 def runLabelme():
-    python_file = subprocess.getoutput('where pythonw.exe').split('\n')[0] 
-    labelme_file =  python_file[:-11] + "/Lib/site-packages/labelme/__main__.py"
-    if np.__version__[:4] == '1.22':
+    conda_dirs = ["c:/Users/users/anaconda3", "d:/Users/users/anaconda3", 
+                  "c:/Users/Admin/anaconda3", "d:/Users/Admin/anaconda3", "c:/Users/admin/anaconda3", "d:/Users/admin/anaconda3", 
+                  "c:/Users/Administrator/anaconda3", "d:/Users/Administrator/anaconda3",
+                  "c:/Programdata/anaconda3", "d:/Programdata/anaconda3", 
+                  "c:/Users/{}/Anaconda3".format(os.getlogin()), "d:/Users/{}/Anaconda3".format(os.getlogin()), 
+                  "c:/사용자/{}/Anaconda3".format(os.getlogin()), "d:/사용자/{}/Anaconda3".format(os.getlogin()),
+                  "c:/anaconda3", "c:/Anaconda3", "d:/anaconda3", "d:/Anaconda3"]
+    try:
+        for Dir in conda_dirs:
+            if os.path.isdir(Dir):
+                python_file = Dir + "/envs/nia/pythonw.exe"
+                labelme_file =  python_file[:-11] + "/Lib/site-packages/labelme/__main__.py"
+
+            if Dir == "no dir":
+                sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
         
-        subprocess.Popen(python_file + ' ' + labelme_file)
+        if np.__version__[:4] == '1.22':
+        
+            subprocess.Popen(python_file + ' ' + labelme_file,  stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+
+    except:
+        sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
+        
 try:
     os.chdir(sys._MEIPASS)
     print(sys._MEIPASS)
@@ -99,6 +146,8 @@ try:
                 imagename = os.path.splitext(jpgfile)[0]
                 jsonfile = Path + '/' + imagename + '.json'
                 imagefile = Path + '/' + imagename + '.jpg'
+                changeexif(image, userID)
+
             runLabelme()
 
             jsonlist = glob(values['Path'] + '/*.json')

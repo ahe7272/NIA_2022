@@ -7,6 +7,7 @@ from jsonformat import getjsonform
 import json
 import shutil
 
+
 class MakeGUI():
     def makegui(self):
         sg.theme('DarkAmber')
@@ -115,9 +116,14 @@ def get_waterinfo(info_path):
         if ws2.cell(1, c2).value not in meta_info_cols:
             sg.Popup('환경정보 파일의 Sheet2 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info, meta_imgs  
-    for r in range(2, ws2.max_row+1):
-        if ws2.cell(r, 1).value not in meta_imgs:
+    r = 2
+    while True:
+        if (ws2.cell(r, 1).value not in meta_imgs) and (ws2.cell(r, 1).value != None):
+            print(ws2.cell(r, 1).value)
             meta_imgs.append(ws2.cell(r, 1).value)
+        if ws2.cell(r, 1).value == None:
+            break
+        r += 1
     return True, water_info, meta_imgs
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치

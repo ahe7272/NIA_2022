@@ -5,6 +5,9 @@ import openpyxl
 import cv2
 from jsonformat import getjsonform
 import json
+import cv2
+import copy
+from skimage.metrics import structural_similarity as ssim
 
 class MakeGUI():
     def makegui(self):
@@ -16,7 +19,9 @@ class MakeGUI():
                   [sg.Text('환경정보 데이터 파일(excel 파일)을 선택해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
                   [sg.InputText('Excel File', font =("Arial", 13), size = (30,1), key='WaterinfoPath'), sg.FileBrowse('SELECT', font =("Arial", 13, 'bold'), size=(10, 1))],
                   [sg.Text('비디오 프레임 추출 간격(초)를 입력해주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
-                  [sg.InputText('Sampling Intervals', font =("Arial", 13),  size = (30,1), key='intervals'), sg.Button('Run',font =("Arial", 13, 'bold'), size=(10,1), key='Run')],
+                  [sg.InputText('Sampling Intervals', font =("Arial", 13),  size = (30,1), key='intervals'), sg.Button('OK',font =("Arial", 13, 'bold'), size=(10,1))],
+                  [sg.Text('프레임 유사도 한계값(0.0~1.0)을 설정해 주세요.',font =("Arial", 13, 'bold'), size=(40, 1))],
+                  [sg.InputText('Similarity Threshold', font =("Arial", 13),  size = (30,1), key='thres'), sg.Button('Run',font =("Arial", 13, 'bold'), size=(10,1), key='Run')],
                   [sg.ProgressBar(1, orientation='h', size=(40,20), key='progress')]
                  ]
 
@@ -33,8 +38,8 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['imageHeight'] = h 
     objects['imageWidth'] = w
     objects['Transparency'] = water_info['Transparency']
-    objects['Longitude'] = water_info['lon']
-    objects['Latitude'] = water_info['lat']
+    objects['Longitude'] = water_info['Longitude']
+    objects['Latitude'] = water_info['Latitude']
     objects['Depth'] = water_info['Depth']
 
     with open(jsonname + '.json', 'w') as jsonfile:
@@ -49,6 +54,18 @@ def clahe_image(img):
     clahed = cv2.merge((clahe_b, clahe_g, clahe_r))
     return clahed
 
+def getSimilarity(img1, img2):
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+    crop1 = gray1[int(gray1.shape[0] * 0.25):int(gray1.shape[0] * 0.75), int(gray1.shape[1] * 0.25):int(gray1.shape[1] * 0.75)]
+    crop2 = gray2[int(gray1.shape[0] * 0.25):int(gray1.shape[0] * 0.75), int(gray1.shape[1] * 0.25):int(gray1.shape[1] * 0.75)]
+
+    (score, _) = ssim(crop1, crop2, full=True)
+    # (score, _) = ssim(gray1, gray2, full=True)
+
+    return score
+
 def preprocess_video(video, interval, savepath, water_info):
     cap = cv2.VideoCapture(video)
     fps = round(cap.get(cv2.CAP_PROP_FPS))
@@ -58,22 +75,37 @@ def preprocess_video(video, interval, savepath, water_info):
     videonamemp4 = os.path.split(video)[-1]
     videoname = os.path.splitext(videonamemp4)[0]
     cnt = 0
-
+    threshold = float(values['thres'])
+    nFrame = 1
+    Memory = None
     for f in frame_array:
         cnt += 1
         cap.set(cv2.CAP_PROP_POS_FRAMES, f)
         success, image = cap.read()
-        
         if success == False:
             print("프레임 추출 실패!")
-        else:   
-            clahe_img = clahe_image(image)
-            h, w, _ = image.shape
-            
-            cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
-            update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)            
-        # print(str(cnt * interval) + "초")
-        
+        else:                
+            if nFrame == 1:
+                Memory = copy.deepcopy(image)
+                nFrame += 1
+                clahe_img = clahe_image(image)
+                h, w, _ = image.shape
+                cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
+                update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)   
+            else:
+                newFrame = copy.deepcopy(image)
+                sim = getSimilarity(Memory, newFrame)
+                if sim <= threshold:
+                    clahe_img = clahe_image(image)
+                    h, w, _ = image.shape
+                    cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
+                    update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)   
+                    Memory = copy.deepcopy(image)
+                    nFrame += 1
+                else:
+                    nFrame += 1
+                    pass 
+                       
         if cv2.waitKey(10) == 27:
             break    
 
@@ -125,7 +157,7 @@ window = m.makegui()
 
 while True:    
     event, values = window.read()     
-    progress_bar = window.FindElement['progress']
+    progress_bar = window['progress']
     if event == 'Run':
         Datapath = values['DataPath']
         info_path = values['WaterinfoPath']
@@ -163,3 +195,7 @@ while True:
             cnt += 1
     if event in (None, 'Exit'):
         break
+
+
+
+

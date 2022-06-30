@@ -64,7 +64,7 @@ def metacheck(path):
     errorlist = ""
     flag = True
     try:
-        wb = openpyxl.load_workbook(path) 
+        wb = openpyxl.load_workbook(path[0]) 
         ws2 = wb['Sheet2']
         for row in range(2, ws2.max_row+1):
             try:
@@ -114,7 +114,7 @@ def check(jsonfile, minsize, path):
         attribute = False
         errorlist += str(imagefile) + ' 파일 - ' + attribute_error + '\n'
     
-    metaflag, meta_error = metacheck(glob.glob(excelpath)[0])
+    metaflag, meta_error = metacheck(glob.glob(excelpath))
     if metaflag:
         meta = True
     else:
