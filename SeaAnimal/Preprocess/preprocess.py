@@ -119,7 +119,6 @@ def get_waterinfo(info_path):
     r = 2
     while True:
         if (ws2.cell(r, 1).value not in meta_imgs) and (ws2.cell(r, 1).value != None):
-            print(ws2.cell(r, 1).value)
             meta_imgs.append(ws2.cell(r, 1).value)
         if ws2.cell(r, 1).value == None:
             break
@@ -170,7 +169,6 @@ while True:
         imagelist = glob(Datapath + "/*.jpg")
         datalength = len(videolist) + len(imagelist)
         progress_bar.UpdateBar(0, datalength)
-
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
@@ -191,7 +189,6 @@ while True:
             cnt += 1
             if imagename in meta_imgs:
                 meta_imgs.remove(imagename)
-
         noimg_error = ""
         if len(meta_imgs) > 0:
             for i in meta_imgs:
@@ -200,6 +197,10 @@ while True:
                 continue
             sg.Popup('Excel 파일에 있는 이미지 '+ noimg_error+'가 해당 폴더에 없습니다. \n다시 확인하고 정제해 주세요.', font =("Arial", 13), keep_on_top=True)
         
+        if cnt == datalength +1 :
+            sg.Popup('정제 완료^^!', font =("Arial", 13), keep_on_top=True)
+            break
+
         
     if event in (None, 'Exit'):
         break

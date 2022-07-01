@@ -193,6 +193,11 @@ while True:
             imagename = os.path.splitext(imagenamejpg)[0]
             preprocess_img(image, savepath, water_info)
             cnt += 1
+
+        if cnt == datalength +1 :
+            sg.Popup('정제 완료^^!', font =("Arial", 13), keep_on_top=True)
+            break
+
     if event in (None, 'Exit'):
         break
 

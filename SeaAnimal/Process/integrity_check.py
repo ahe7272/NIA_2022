@@ -4,6 +4,7 @@ import numpy as np
 import glob
 import openpyxl
 import shutil
+from datetime import date
 
 def classname_check(objects):
     classname_error = ""
@@ -69,7 +70,7 @@ def metacheck(path):
         for row in range(2, ws2.max_row+1):
             try:
                 float(ws2.cell(row, 3).value)
-                if ws2.cell(row, 3).value >100 or ws2.cell(row, 3).value < 0: 
+                if ws2.cell(row, 3).value > 500 or ws2.cell(row, 3).value < 0: 
                     errorlist += 'Size 에러!\nExcel 파일 내 Size열 ' +str(row) + ' 행에 숫자가 정상범위를 벗어납니다. 확인 및 수정 후 Metadata 작업을 진행해 주세요.\n'
                     flag = False
             except ValueError:
@@ -92,7 +93,8 @@ def check(jsonfile, minsize, path):
     jsonpath = path + '/' + jsonfile
     imagefile = os.path.splitext(jsonfile)[0] + '.jpg'
     imagepath = path + '/' + imagefile
-    processed_path = os.path.split(path)[0] + '/Processed/'
+    processed_path = path + '/' + str(date.today()) +'/'
+
     excelpath = path + '/*.xlsx'
     os.makedirs(processed_path, exist_ok=True)
 

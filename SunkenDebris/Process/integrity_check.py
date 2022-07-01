@@ -3,6 +3,7 @@ import json
 import numpy as np
 import shutil
 import openpyxl
+from datetime import date
 
 def classname_check(objects):
     classname_error = ""
@@ -64,7 +65,7 @@ def check(jsonfile, minsize, path):
     jsonpath = path + '/' + jsonfile
     imagefile = os.path.splitext(jsonfile)[0] + '.jpg'
     imagepath = path + '/' + imagefile
-    donepath = os.path.split(path)[0] + '/Processed/'
+    donepath = path + '/' + str(date.today()) +'/'
     os.makedirs(donepath, exist_ok=True)
 
     objects = getjson(jsonpath)
