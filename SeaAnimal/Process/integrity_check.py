@@ -18,7 +18,7 @@ def classname_check(objects):
 
 def attribute_value(objects):
     attr_error = ""
-    if len(objects) == 17:
+    if len(objects) == 15:
         return True, attr_error
     else:
         attr_error += '속성 개수 에러!\n' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'

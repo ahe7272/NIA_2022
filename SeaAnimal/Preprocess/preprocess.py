@@ -38,7 +38,6 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['Salinity'] = water_info['Salinity']
     objects['DO'] = water_info['DO']
     objects['pH'] = water_info['pH']
-    objects['Transparency'] = water_info['Transparency']
     objects['Longitude'] = water_info['Longitude']
     objects['Latitude'] = water_info['Latitude']
     objects['Depth'] = water_info['Depth']
@@ -48,10 +47,13 @@ def update_json(jsonname, imagePath, water_info, h, w):
 
 def clahe_image(img):
     b, g, r = cv2.split(img)
-    clahe = cv2.createCLAHE(clipLimit=3.0,tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     clahe_b = clahe.apply(b)
+    clahe_b = cv2.normalize(clahe_b, None, 0, 255, cv2.NORM_MINMAX)
     clahe_g = clahe.apply(g)
+    clahe_g = cv2.normalize(clahe_g, None, 0, 255, cv2.NORM_MINMAX)
     clahe_r = clahe.apply(r)
+    clahe_r = cv2.normalize(clahe_r, None, 0, 255, cv2.NORM_MINMAX)
     clahed = cv2.merge((clahe_b, clahe_g, clahe_r))
     return clahed
 
@@ -92,7 +94,7 @@ def preprocess_img(image, savepath, water_info):
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
 def get_waterinfo(info_path):
-    water_info_cols = ['Temperature', 'Salinity', 'DO', 'pH', 'Transparency', 'Longitude', 'Latitude', 'Depth']
+    water_info_cols = ['Temperature', 'Salinity', 'DO', 'pH', 'Longitude', 'Latitude', 'Depth']
     meta_info_cols = ['Name', 'Class', 'Size', 'Weight']
     try:
         wb = openpyxl.load_workbook(info_path)
@@ -103,7 +105,7 @@ def get_waterinfo(info_path):
         sg.Popup('excel파일이 경로에 없거나 Sheet 네임이 \n "Sheet1"과 "Sheet2"로 정확하게 입력되었는지 확인해주세요.', font =("Arial", 15), keep_on_top=True)
     water_info = {}
     meta_imgs = []
-    for c1 in range(1, 9):
+    for c1 in range(1, 8):
         if ws1.cell(1, c1).value not in water_info_cols:
             sg.Popup('환경정보 파일의 Sheet1 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info, meta_imgs
@@ -127,17 +129,15 @@ def get_waterinfo(info_path):
 
 # information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def check_waterinfo(water_info):
-    flag_array = [True for i in range(1, 9)]
+    flag_array = [True for i in range(1, 8)]
     if 0 > water_info['Temperature'] or water_info['Temperature'] > 40:
         flag_array[0] = False
     if 0 > water_info['Salinity'] or water_info['Salinity'] > 40:
         flag_array[1] = False
     if 0 > water_info['DO'] or water_info['DO'] > 15:
         flag_array[2] = False
-    if 6 > water_info['pH'] or water_info['pH'] > 9:
+    if 6 > water_info['pH'] or water_info['pH'] > 10:
         flag_array[3] = False
-    if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
-        flag_array[4] = False
     if 33.11 > water_info['Longitude'] or water_info['Longitude'] > 38.61:
         flag_array[5] = False
     if 124.6 > water_info['Latitude'] or water_info['Latitude'] > 131.87:

@@ -40,6 +40,7 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['Transparency'] = water_info['Transparency']
     objects['Longitude'] = water_info['Longitude']
     objects['Latitude'] = water_info['Latitude']
+    objects['Site_Type'] = water_info['Site_Type']
     objects['Depth'] = water_info['Depth']
 
     with open(jsonname + '.json', 'w') as jsonfile:
@@ -47,10 +48,13 @@ def update_json(jsonname, imagePath, water_info, h, w):
 
 def clahe_image(img):
     b, g, r = cv2.split(img)
-    clahe = cv2.createCLAHE(clipLimit=3.0,tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     clahe_b = clahe.apply(b)
+    clahe_b = cv2.normalize(clahe_b, None, 0, 255, cv2.NORM_MINMAX)
     clahe_g = clahe.apply(g)
+    clahe_g = cv2.normalize(clahe_g, None, 0, 255, cv2.NORM_MINMAX)
     clahe_r = clahe.apply(r)
+    clahe_r = cv2.normalize(clahe_r, None, 0, 255, cv2.NORM_MINMAX)
     clahed = cv2.merge((clahe_b, clahe_g, clahe_r))
     return clahed
 
@@ -119,7 +123,7 @@ def preprocess_img(image, savepath, water_info):
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
 def get_waterinfo(info_path):
-    water_info_cols = ['Transparency', 'Longitude', 'Latitude', 'Depth']
+    water_info_cols = ['Transparency', 'Longitude', 'Latitude', 'CDist', 'Site_Type', 'Depth']
     try:
         wb = openpyxl.load_workbook(info_path)
         # 수질 환경정보 excel 파일을 불러와 각 cell의 값을 list로 저장
@@ -128,28 +132,39 @@ def get_waterinfo(info_path):
     except:
         sg.Popup('excel파일이 경로에 없거나 Sheet 네임이 \n "Sheet1"으로 정확하게 입력되었는지 확인해주세요.', font =("Arial", 15), keep_on_top=True)
     
-    for c in range(1, 5):
+    for c in range(1, 6):
         if ws1.cell(1,c).value not in water_info_cols:
             sg.Popup('환경정보 파일의 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info
         if (ws1.cell(2,c).value == None) or (type(ws1.cell(2,c).value) == str):
-            sg.Popup('환경정보 값이 누락되었거나 문자가 들어 있습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            sg.Popup('환경정보 값이 누락되었거나 형식에 맞지 않습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info
         else:
             water_info[ws1.cell(1,c).value] = ws1.cell(2,c).value
+    if ws1.cell(1, 6).value not in water_info_cols:
+        sg.Popup('Excel 파일 내 Depth 열명이 올바른 지 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+        return False, water_info
+    else:
+        water_info[ws1.cell(1,6).value] = ws1.cell(2,6).value
+    if (ws1.cell(2, 6).value == None) or (type(ws1.cell(2, 6).value) == float):
+        sg.Popup('Depth 값이 누락되었거나 형식에 맞지 않습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+        return False, water_info   
+    else:
+        water_info[ws1.cell(1,6).value] = ws1.cell(2,6).value  
     return True, water_info
 
-# information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def check_waterinfo(water_info):
-    flag_array = [True for i in range(1, 5)]
+    flag_array = [True for i in range(1, 6)]
     if 0 > water_info['Transparency'] or water_info['Transparency'] > 15:
         flag_array[0] = False
     if 33.11 > water_info['Longitude'] or water_info['Longitude'] > 38.61:
         flag_array[1] = False
     if 124.6 > water_info['Latitude'] or water_info['Latitude'] > 131.87:
         flag_array[2] = False
-    if 0 > water_info['Depth']:
+    if water_info['Site_Type'] not in [1, 2]:
         flag_array[3] = False
+    if water_info['Depth'] not in ['A', 'B', 'C']:
+        flag_array[4] = False
     return flag_array
 
 m = MakeGUI()

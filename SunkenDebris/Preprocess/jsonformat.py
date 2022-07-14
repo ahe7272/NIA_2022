@@ -10,6 +10,8 @@ def getjsonform():
               "Transparency": 0, 
               "Longitude": 0,
               "Latitude": 0,
+              "CDist": 0,
+              "Site_Type": 0,
               "Depth": 5.4,
             }
   return objects
