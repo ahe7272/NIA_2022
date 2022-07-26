@@ -12,6 +12,7 @@ def getjsonform():
               "Latitude": 0,
               "CDist": 0,
               "Site_Type": 0,
-              "Depth": 5.4,
+              "Depth": 0,
+              "Origin_img" : ""
             }
   return objects

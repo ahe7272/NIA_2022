@@ -5,9 +5,13 @@ import openpyxl
 import cv2
 from jsonformat import getjsonform
 import json
-import cv2
 import copy
 from skimage.metrics import structural_similarity as ssim
+
+from PIL import Image, ImageOps
+import io
+import base64
+import numpy as np
 
 class MakeGUI():
     def makegui(self):
@@ -32,7 +36,20 @@ def get_frame(start, end, fps):
     frame_array = [i for i in range(start, end, fps)]
     return frame_array
 
-def update_json(jsonname, imagePath, water_info, h, w):
+def img_to_b64(imgfile):
+    if isinstance(imgfile, (np.ndarray)) == False:
+        imgfile = cv2.imread(imgfile)
+    imgfile = Image.fromarray(imgfile)
+    f = io.BytesIO()
+    imgfile.save(f, format='PNG')
+    img_bin = f.getvalue()
+    if hasattr(base64, 'encodebytes'):
+        img_b64 = base64.encodebytes(img_bin)
+    else:
+        img_b64 = base64.encodestring(img_bin)
+    return img_b64
+
+def update_json(jsonname, imagePath, water_info, h, w, Databin):
     objects = getjsonform()
     objects['imagePath'] = imagePath + '.jpg'
     objects['imageHeight'] = h 
@@ -42,7 +59,7 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['Latitude'] = water_info['Latitude']
     objects['Site_Type'] = water_info['Site_Type']
     objects['Depth'] = water_info['Depth']
-
+    objects['Origin_img'] = Databin.decode('utf8')
     with open(jsonname + '.json', 'w') as jsonfile:
         json.dump(objects, jsonfile, indent=4)
 
@@ -92,18 +109,23 @@ def preprocess_video(video, interval, savepath, water_info):
             if nFrame == 1:
                 Memory = copy.deepcopy(image)
                 nFrame += 1
+                Databin = img_to_b64(image)
                 clahe_img = clahe_image(image)
                 h, w, _ = image.shape
+                if (h != 2160) or (w != 3840):
+                    sg.Popup(videoname + '비디오 비율이 안 맞습니다.'+str(h) + ' ' + str(w), font =("Arial", 15), keep_on_top=True)
+                    return False, water_info 
                 cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
-                update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)   
+                update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w, Databin)   
             else:
                 newFrame = copy.deepcopy(image)
                 sim = getSimilarity(Memory, newFrame)
                 if sim <= threshold:
+                    Databin = img_to_b64(image)
                     clahe_img = clahe_image(image)
                     h, w, _ = image.shape
                     cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
-                    update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)   
+                    update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w, Databin)   
                     Memory = copy.deepcopy(image)
                     nFrame += 1
                 else:
@@ -116,11 +138,12 @@ def preprocess_video(video, interval, savepath, water_info):
 def preprocess_img(image, savepath, water_info):
     imagenamejpg = os.path.split(image)[-1]
     imagename = os.path.splitext(imagenamejpg)[0]
+    Databin = img_to_b64(image)
     image = cv2.imread(image)
     clahe_img = clahe_image(image)
     cv2.imwrite(savepath + "/" + imagenamejpg, clahe_img)
     h, w, _ = clahe_img.shape
-    update_json(savepath + "/" + imagename, imagename, water_info, h, w)
+    update_json(savepath + "/" + imagename, imagename, water_info, h, w, Databin)
 
 def get_waterinfo(info_path):
     water_info_cols = ['Transparency', 'Longitude', 'Latitude', 'CDist', 'Site_Type', 'Depth']
@@ -194,8 +217,8 @@ while True:
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
-        os.makedirs(os.path.split(Datapath)[0] + '/Preprocessed', exist_ok=True)
-        savepath = os.path.split(Datapath)[0] + '/Preprocessed'
+        savepath = os.path.split(Datapath)[0] + '/' + str(os.path.split(Datapath)[1]) + '_Preprocessed'
+        os.makedirs(savepath, exist_ok=True)
         for video in videolist:
             progress_bar.UpdateBar(cnt, datalength)
             videoname = os.path.split(video)[-1]

@@ -6,7 +6,7 @@ import cv2
 from jsonformat import getjsonform
 import json
 import shutil
-
+import datetime
 
 class MakeGUI():
     def makegui(self):
@@ -41,6 +41,10 @@ def update_json(jsonname, imagePath, water_info, h, w):
     objects['Longitude'] = water_info['Longitude']
     objects['Latitude'] = water_info['Latitude']
     objects['Depth'] = water_info['Depth']
+    objects['Location'] = water_info['Location']
+    objects['Weather'] = water_info['Weather']
+    objects['Transparency'] = water_info['Transparency']
+    objects['Date_created'] = str(water_info['Date_created'])[:10]
 
     with open(jsonname + '.json', 'w') as jsonfile:
         json.dump(objects, jsonfile, indent=4)
@@ -77,7 +81,9 @@ def preprocess_video(video, interval, savepath, water_info):
         else:   
             clahe_img = clahe_image(image)
             h, w, _ = image.shape
-            
+            if (h != 2160) or (w != 3840):
+                sg.Popup(videoname + '비디오 비율이 안 맞습니다.'+str(h) + ' ' + str(w), font =("Arial", 15), keep_on_top=True)
+                return False, water_info 
             cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
             update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w)
                     
@@ -94,7 +100,7 @@ def preprocess_img(image, savepath, water_info):
     update_json(savepath + "/" + imagename, imagename, water_info, h, w)
 
 def get_waterinfo(info_path):
-    water_info_cols = ['Temperature', 'Salinity', 'DO', 'pH', 'Longitude', 'Latitude', 'Depth']
+    water_info_cols = ['Temperature', 'Salinity', 'DO', 'pH', 'Longitude', 'Latitude', 'Depth', 'Location' , 'Weather', 'Transparency', 'Date_created']
     meta_info_cols = ['Name', 'Class', 'Size', 'Weight']
     try:
         wb = openpyxl.load_workbook(info_path)
@@ -105,12 +111,24 @@ def get_waterinfo(info_path):
         sg.Popup('excel파일이 경로에 없거나 Sheet 네임이 \n "Sheet1"과 "Sheet2"로 정확하게 입력되었는지 확인해주세요.', font =("Arial", 15), keep_on_top=True)
     water_info = {}
     meta_imgs = []
-    for c1 in range(1, 8):
+    for c1 in range(1, 12):
         if ws1.cell(1, c1).value not in water_info_cols:
             sg.Popup('환경정보 파일의 Sheet1 열명이 Format에 맞지 않습니다. \nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info, meta_imgs
+        if c1 == 8:
+            if (ws1.cell(2,c1).value == None) or (type(ws1.cell(2,c1).value) != str):
+                sg.Popup('Excel Sheet1의 Location 값을 확인해주세요.', font =("Arial", 15), keep_on_top=True)
+                return False, water_info, meta_imgs
+            water_info[ws1.cell(1,c1).value] = ws1.cell(2,c1).value
+            continue
+        if c1 == 12:
+            if (ws1.cell(2,c1).value == None) or (type(ws1.cell(2,c1).value) != datetime.date):
+                sg.Popup('Excel Sheet1의 Date_created 값을 확인해주세요.', font =("Arial", 15), keep_on_top=True)
+                return False, water_info, meta_imgs
+            water_info[ws1.cell(1,c1).value] = ws1.cell(2,c1).value
+            continue
         if (ws1.cell(2,c1).value == None) or (type(ws1.cell(2,c1).value) == str):
-            sg.Popup('환경정보 값이 누락되었거나 문자가 들어 있습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
+            sg.Popup('환경정보 값이 누락되었거나 오탈자가 들어 있습니다.\nExcel 파일을 확인해 주세요.', font =("Arial", 15), keep_on_top=True)
             return False, water_info, meta_imgs
         else:
             water_info[ws1.cell(1,c1).value] = ws1.cell(2,c1).value
@@ -127,9 +145,8 @@ def get_waterinfo(info_path):
         r += 1
     return True, water_info, meta_imgs
 
-# information.xlsx 내 수질정보 열명 확실하게 정하기 및 부경해양에서 작성할 야장 format과 일치
 def check_waterinfo(water_info):
-    flag_array = [True for i in range(1, 8)]
+    flag_array = [True for i in range(1, 12)]
     if 0 > water_info['Temperature'] or water_info['Temperature'] > 40:
         flag_array[0] = False
     if 0 > water_info['Salinity'] or water_info['Salinity'] > 40:
@@ -144,6 +161,15 @@ def check_waterinfo(water_info):
         flag_array[6] = False
     if 0 > water_info['Depth']:
         flag_array[7] = False
+    if water_info['Weather'] not in [1,2,3]:
+        flag_array[8] = False
+    if 0 > water_info['Transparency'] or water_info['Transparency'] > 20:
+        flag_array[8] = False
+    created_date = str(water_info['Date_created'])
+    if (int(created_date[:4]) != 2022):
+        flag_array[9] = False
+    if (int(created_date[5:7]) > 12) or (int(created_date[5:7]) < 6):
+        flag_array[9] = False
     return flag_array
 
 m = MakeGUI()
@@ -172,8 +198,8 @@ while True:
         if len(videolist) > 0 :
             interval = int(values['intervals'])
         cnt = 1
-        os.makedirs(os.path.split(Datapath)[0] + '/Preprocessed', exist_ok=True)
-        savepath = os.path.split(Datapath)[0] + '/Preprocessed'
+        savepath = os.path.split(Datapath)[0] + '/' + str(os.path.split(Datapath)[1]) + '_Preprocessed'
+        os.makedirs(savepath, exist_ok=True)
         
         shutil.copy2(Datapath + '/' + info_name, savepath + '/' + info_name)
         for video in videolist:

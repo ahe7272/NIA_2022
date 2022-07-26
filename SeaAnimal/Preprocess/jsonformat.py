@@ -14,5 +14,9 @@ def getjsonform():
               "Longitude": 0,
               "Latitude": 0,
               "Depth": 5.4,
+              "Location": "",
+              "Weather": 0,
+              "Transparency": 0,
+              "Date_created": "2000-01-01" 
             }
   return objects
