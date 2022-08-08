@@ -7,8 +7,7 @@ from jsonformat import getjsonform
 import json
 import copy
 from skimage.metrics import structural_similarity as ssim
-
-from PIL import Image, ImageOps
+from PIL import Image
 import io
 import base64
 import numpy as np
@@ -112,7 +111,11 @@ def preprocess_video(video, interval, savepath, water_info):
                 Databin = img_to_b64(image)
                 clahe_img = clahe_image(image)
                 h, w, _ = image.shape
-                if (h != 2160) or (w != 3840):
+                if (h == 3840) and  (w == 2160):
+                    clahe_img = cv2.rotate(clahe_img, cv2.ROTATE_90_CLOCKWISE)
+                    h = 2160
+                    w = 3840
+                elif (h not in [2160, 3840]) or (w not in [3840, 2160]):
                     sg.Popup(videoname + '비디오 비율이 안 맞습니다.'+str(h) + ' ' + str(w), font =("Arial", 15), keep_on_top=True)
                     return False, water_info 
                 cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
@@ -124,6 +127,10 @@ def preprocess_video(video, interval, savepath, water_info):
                     Databin = img_to_b64(image)
                     clahe_img = clahe_image(image)
                     h, w, _ = image.shape
+                    if (h == 3840) and  (w == 2160):
+                        clahe_img = cv2.rotate(clahe_img, cv2.ROTATE_90_CLOCKWISE)
+                        h = 2160
+                        w = 3840
                     cv2.imwrite(savepath + "/" + videoname +'_' + str(cnt) + '.jpg', clahe_img)
                     update_json(savepath + "/" + videoname +'_' + str(cnt), videoname +'_' + str(cnt), water_info, h, w, Databin)   
                     Memory = copy.deepcopy(image)
@@ -141,8 +148,15 @@ def preprocess_img(image, savepath, water_info):
     Databin = img_to_b64(image)
     image = cv2.imread(image)
     clahe_img = clahe_image(image)
+    h, w, _ = image.shape
+    if (h == 3840) and  (w == 2160):
+        clahe_img = cv2.rotate(clahe_img, cv2.ROTATE_90_CLOCKWISE)
+        h = 2160
+        w = 3840
+    elif (h not in [2160, 3840]) or (w not in [3840, 2160]):
+        sg.Popup(imagename + '이미지 비율이 안 맞습니다.'+str(h) + ' ' + str(w), font =("Arial", 15), keep_on_top=True)
+        return False, water_info 
     cv2.imwrite(savepath + "/" + imagenamejpg, clahe_img)
-    h, w, _ = clahe_img.shape
     update_json(savepath + "/" + imagename, imagename, water_info, h, w, Databin)
 
 def get_waterinfo(info_path):
