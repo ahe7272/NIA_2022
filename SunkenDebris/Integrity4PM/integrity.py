@@ -1,3 +1,4 @@
+from operator import truediv
 import PySimpleGUI as sg
 from glob import glob
 import os
@@ -6,8 +7,9 @@ import sys
 import json
 import openpyxl
 import numpy as np
-from glob import glob
 from datetime import date
+import pandas as pd 
+import shutil
 
 class MakeGUI():
     def makegui(self):
@@ -18,15 +20,45 @@ class MakeGUI():
                   [sg.Text('', font =("Arial", 10, 'bold'))],
                   [sg.Text('EXCEL PATH', font =("Arial", 15)), sg.InputText(key='Excel', font =("Arial", 15), size = (4,1)), sg.FileBrowse('SELECT',font =("Arial", 15, 'bold') , size=(10, 1), key='excel')],
                   [sg.Text('', font =("Arial", 10, 'bold'))],
+                  [sg.Text('검수 주차', font =("Arial", 15, 'bold'), size=(8, 1)), sg.InputText(key='Week', font =("Arial", 15),  size = (10,1))],
+                  [sg.Text('', font =("Arial", 10, 'bold'))],
                   [sg.Button('Labelme', font =("Arial", 15, 'bold'), size=(25, 1))],
                   [sg.Text('', font =("Arial", 10, 'bold'))],
-                  [sg.Button('FLAG', font =("Arial", 15, 'bold'), size=(25, 1))],
-                  [sg.Text('', font =("Arial", 10, 'bold'))],
+                  [sg.Button('Image name list to Excel', font =("Arial", 15, 'bold'), size=(25, 1))],
+                  [sg.Text('', font =("Arial", 10, 'bold'))],            
                   [sg.Button('Done', font =("Arial", 15, 'bold'), size=(25, 1))]
                     ]
 
         window = sg.Window('Integrity Check for PM', integrity, resizable=True, grab_anywhere = True, element_justification='c') 
         return window
+
+def list2excel(userid):
+    all_filenames = []
+    try:
+        for (path, dir, files) in os.walk(values['Path']):
+            for jpg in files:
+                if jpg[-4:] == '.jpg':
+                    all_filenames += [[jpg]]
+        listdf = pd.DataFrame.from_records(all_filenames)
+        filename = values['Path'] + '/' + userid + '_' + str(date.today()) + '0.xlsx'
+        try: 
+            if os.path.exists(filename): 
+                lastfileno = max([int(x.split(str(date.today()))[-1][0]) for x in glob(filename[:-7]+'*.xlsx')])
+                filename = values['Path'] + '/' + userid + '_' + str(date.today()) + str(lastfileno + 1) + '.xlsx'
+                listdf.to_excel(filename)
+                listlen = len(all_filenames)
+            else:
+                listdf.to_excel(filename)
+                listlen = len(all_filenames)
+
+        except OSError: 
+            print("directory를 생성할 수 없습니다.")
+            exit()
+
+        return filename, listlen
+    except:
+        sg.Popup("파일명리스트 엑셀파일 생성에 실패했습니다." + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
+    
 
 def getCWid():
     userID = ''
@@ -79,30 +111,51 @@ try:
         if event == 'Labelme':
             runLabelme()
             userid = getCWid()
-        
-        if event =='FLAG':
-            flag_cnt += 1
+        if event == 'Image name list to Excel':
+            listexcelpath, listlen = list2excel(userid)
 
         if event == 'Done':
-            sg.Popup("검수를 완료하셨습니다. \nExcel파일을 확인하시어 각 CW작업자분들에게 맞게 Feedback 부탁드립니다.", font =("Arial", 15), keep_on_top=True)   
+            sg.Popup("검수를 완료하셨습니다.", font =("Arial", 15), keep_on_top=True)   
+            PASS_path = values['Path'] + '/' + userid + '_PASS' + '/'
+            FAIL_path = values['Path'] + '/' + userid + '_FAIL' + '/'
+            os.makedirs(PASS_path, exist_ok=True)
+            os.makedirs(FAIL_path, exist_ok=True)
+
+            listwb = openpyxl.load_workbook(listexcelpath)
+            listws = listwb['Sheet1']
+            try: 
+                for passROW in range(2, listlen+2):
+                    Pure_filename = listws.cell(passROW,2).value[:-4]
+                    if listws.cell(passROW,3).value == 0 :                    
+                        shutil.move(values['Path'] + '/' + Pure_filename +'.jpg', PASS_path)
+                        shutil.move(values['Path'] + '/' + Pure_filename +'.json', PASS_path)
+                    elif (listws.cell(passROW,3).value != None) and (listws.cell(passROW,3).value > 0): 
+                        flag_cnt += listws.cell(passROW,3).value
+                        shutil.move(values['Path'] + '/' + Pure_filename +'.jpg', FAIL_path)
+                        shutil.move(values['Path'] + '/' + Pure_filename +'.json', FAIL_path)
+                    else:
+                        continue
+            except:
+                sg.Popup("반려, 통과 파일을 옮기는데 실패했습니다.", font =("Arial", 15), keep_on_top=True)   
             wb = openpyxl.load_workbook(values['excel'])
             ws = wb['Sheet2']
+
             try:
-                for datecol in range(1,30):
-                    if str(date.today()) == str(ws.cell(3, datecol).value)[:10]:
+                for datecol in range(3,8):
+                    if ws.cell(3, datecol).value == None:
+                        continue
+                    elif ws.cell(3, datecol).value == values['Week']:
                         todaycol = datecol
             except:
-                sg.Popup("Excel 파일 내에 오늘 날짜가 없습니다.", font =("Arial", 15), keep_on_top=True)   
-            rowflag = False
-            for row in range(4, 13):
+                sg.Popup("Excel 파일 내에 검수할 주차 이름이 없습니다.", font =("Arial", 15), keep_on_top=True)   
+            for row in range(4, 12):
+                if ws.cell(row, 1).value == None:
+                    continue
                 if userid == ws.cell(row, 1).value:
-                    ws.cell(row, todaycol).value = flag_cnt
-                    rowflag = True
-            if rowflag == False:
-                sg.Popup("엑셀 파일 안에 검수 대상 CW 아이디가 없습니다.", font =("Arial", 15), keep_on_top=True)   
+                    ws.cell(row, todaycol).value += flag_cnt
+                  
             wb.save(values['excel'])
             flag_cnt = 0   
-
             break
         if event == sg.WIN_CLOSED or event in (None, 'Exit'):
             break
