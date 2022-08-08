@@ -59,6 +59,14 @@ def getjson(jsonfile):
         objects = json.load(Jsonfile)
     return objects
 
+def label_exist(objects):
+    label_error = ""
+    labelflag = True
+    if len(objects['shapes']) == 0:
+        label_error += '사진에 Annotation이 존재하지 않습니다. 작업을 완료하시고 무결성 검사를 진행해 주세요.\n'
+        labelflag = False
+    return labelflag, label_error
+
 classname =['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Ecklonia_cava', 'Heliocidaris_crassispina','Hemicentrotus','Sargassum',  'Sea_hare', 'Turbo_cornutus']
 
 def metacheck(path):
@@ -122,7 +130,14 @@ def check(jsonfile, minsize, path):
     else:
         meta = False
 
-    if classes and attribute and meta:
+    labelflag, label_error = label_exist(objects)
+    if labelflag:
+        labels = True
+    else:
+        labels = False
+        errorlist += str(imagefile) + ' 파일 - ' + label_error + '\n'
+
+    if classes and attribute and labels and meta:
         shutil.move(jsonpath, processed_path + jsonfile)
         shutil.move(imagepath, processed_path + imagefile)
     return errorlist 
