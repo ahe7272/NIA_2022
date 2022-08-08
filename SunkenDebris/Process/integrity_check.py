@@ -21,6 +21,13 @@ def attribute_value(objects):
     else:
         attr_error += '속성 개수 에러!\n' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'
         return False, attr_error
+def label_exist(objects):
+    label_error = ""
+    labelflag = True
+    if len(objects['shapes']) == 0:
+        label_error += '사진에 Annotation이 존재하지 않습니다. 작업을 완료하시고 무결성 검사를 진행해 주세요.\n'
+        labelflag = False
+    return labelflag, label_error
 
 def size(objects, minsize):
     total_obj = len(objects['shapes'])
@@ -84,8 +91,15 @@ def check(jsonfile, minsize, path):
     else:
         attribute = False
         errorlist += str(imagefile) + ' 파일 - ' + attribute_error + '\n'
-        
-    if classes and attribute:
+
+    labelflag, label_error = label_exist(objects)
+    if labelflag:
+        labels = True
+    else:
+        labels = False
+        errorlist += str(imagefile) + ' 파일 - ' + label_error + '\n'
+
+    if classes and attribute and labels:
         shutil.move(jsonpath, donepath + jsonfile)
         shutil.move(imagepath, donepath + imagefile)
     return errorlist 

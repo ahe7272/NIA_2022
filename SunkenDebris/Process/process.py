@@ -77,7 +77,7 @@ class MakeGUI():
                             selected_title_color='Black',
                             border_width=10)]        
                     ]
-        window = sg.Window('Processing Data', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
+        window = sg.Window('Process_07.28', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
         return window
         
 def changeexif(imagefile, ID):
