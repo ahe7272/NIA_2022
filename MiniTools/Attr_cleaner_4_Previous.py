@@ -30,7 +30,7 @@ def getjson(jsonfile):
 # 기구축 내 클래스명 통일 작업
 
 classes = []
-for (path, dir, files) in os.walk('C:/Users/Administrator/Downloads/ready_bbox'): 
+for (path, dir, files) in os.walk('C:/Users/Administrator/Downloads/bbox'): 
     for item in files:
         if item[-5:] == '.json':
             objects = getjson(path + '/' + item)

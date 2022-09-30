@@ -7,7 +7,7 @@ def getjson(jsonfile):
         Jsonfile.close()
     return objects
 
-for (path, dir, files) in os.walk('C:/Users/Administrator/Desktop/8_3'): 
+for (path, dir, files) in os.walk('C:/Users/Administrator/Downloads/8_4'): 
     for item in files:
         space_removed = ''.join(item.split(' '))
         old = path + '/' + item
