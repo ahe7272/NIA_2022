@@ -2,7 +2,6 @@ import json
 import os
 import numpy as np
 from classes import debris_dict, sea_animal_dict
-import pandas as pd
 
 def getjson(jsonfile):
     with open(jsonfile) as j:
@@ -11,10 +10,8 @@ def getjson(jsonfile):
 
 D_or_S = input("침적 데이터면 D, 조식동물이면 S를 입력해주세요. ")
 if D_or_S == 'D':
-    savepath = 'C:/Users/Administrator/Documents/Github/NIA_2022/ObtainmentRate/Rate_excels/SunkenDebris'
     classes_dict= debris_dict()
 elif D_or_S == 'S':
-    savepath = 'C:/Users/Administrator/Documents/Github/NIA_2022/ObtainmentRate/Rate_excels/SeaAnimals'
     classes_dict= sea_animal_dict()
 else:
     exit()
@@ -56,40 +53,40 @@ def classify_distance_4_debris(maxratio):
 
 def classify_distance_4_seaanimal(maxratio, maxlabel):
     if maxlabel == 'Asterias_amurensis':
-        farratio = 5.055
-        nearratio = 1.46
+        farratio = 0.9
+        nearratio = 8.09
     elif maxlabel == 'Asterina_pectinifera':
-        farratio = 2.12
-        nearratio = 0.615
+        farratio = 0.38
+        nearratio = 3.39
     elif maxlabel == 'Conch':
-        farratio = 0.31
-        nearratio = 0.09
+        farratio = 0.06
+        nearratio = 0.5
     elif maxlabel == 'Ecklonia_cava':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Heliocidaris_crassispina':
-        farratio = 1.115
-        nearratio = 0.325
+        farratio = 0.2
+        nearratio = 1.78
     elif maxlabel == 'Hemicentrotus':
-        farratio = 0.375
-        nearratio = 0.11
+        farratio = 0.6
+        nearratio = 0.7
     elif maxlabel == 'Sargassum':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Sea_hare':
-        farratio = 4.705
-        nearratio = 1.36
+        farratio = 0.84
+        nearratio = 7.53
     elif maxlabel == 'Turbo_cornutus':
-        farratio = 1.52
-        nearratio = 0.44
+        farratio = 0.27
+        nearratio = 2.43
     if maxratio <= farratio:
         return 'Far'
     elif (maxratio <= nearratio) and (maxratio > farratio): 
         return 'Mid'
     elif maxratio > nearratio:
         return 'Near'
-
-for path, dirs, files in os.walk('C:/Users/Administrator/Desktop/22'):
+        
+for path, dirs, files in os.walk('C:/Dataset/ori/Bbox/Attr_errors/Bbox'):
     for item in files:
         if item[-5:] == '.json':
             objects = getjson(path + '/' + item)
@@ -109,14 +106,21 @@ for path, dirs, files in os.walk('C:/Users/Administrator/Desktop/22'):
                 print(item)
             if (D_or_S == 'S'):
                 distance_flag = classify_distance_4_seaanimal(maxratio, maxlabel)
-            else:
+                if maxlabel not in ['Ecklonia_cava', 'Sargassum']:
+                    if distance_flag == 'Near':
+                        objects['Distance'] = 0.5
+                    elif distance_flag == 'Mid':
+                        objects['Distance'] = 1.0
+                    elif distance_flag == 'Far':
+                        objects['Distance'] = 1.5
+            elif (D_or_S == 'D'):
                 distance_flag = classify_distance_4_debris(maxratio)
-            if distance_flag == 'Near':
-                objects['Distance'] = 0.5
-            elif distance_flag == 'Mid':
-                objects['Distance'] = 1.0
-            elif distance_flag == 'Far':
-                objects['Distance'] = 1.5
+                if distance_flag == 'Near':
+                    objects['Distance'] = 0.5
+                elif distance_flag == 'Mid':
+                    objects['Distance'] = 1.0
+                elif distance_flag == 'Far':
+                    objects['Distance'] = 1.5
             with open(path + '/' + item, 'w') as j:
                 json.dump(objects, j, indent='\t')
                 j.close()

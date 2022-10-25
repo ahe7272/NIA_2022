@@ -14,6 +14,7 @@ class MakeGUI():
         layout = [
                   [sg.Text('POSTPROCESS', font =("Arial", 30, 'bold'), text_color = 'Skyblue')], 
                   [sg.Text(' PATH', font =("Arial", 15)), sg.InputText( font =("Arial", 15, 'bold'), size=(20, 1), key='Path'), sg.FolderBrowse('SELECT', font =("Arial", 10, 'bold'), size=(8, 1))],
+                  [sg.Button('Run',font =("Arial", 13, 'bold'), size=(10,1), key='Run')],
                   [sg.ProgressBar(1, orientation='h', size=(40, 20), key='progress')]
                   ]
         window = sg.Window('Postprocess', layout, grab_anywhere = True).Finalize()
@@ -29,11 +30,6 @@ def handlejson(jsonfile, option, objects=''):
             json.dump(objects, j, indent='\t')
 
 def restore_img(originals_path, path, objects, jsonfile):
-    try :
-        exist = objects['Origin_img']
-    except:
-        return objects
-
     try:
         Databin = objects['Origin_img'].encode('utf-8')
         f = io.BytesIO()
@@ -67,7 +63,7 @@ def restore_img(originals_path, path, objects, jsonfile):
                 objects.pop('Origin_img')
                 return objects
         except:
-            print(path + '/' + jsonfile)
+            # print(path + '/' + jsonfile)
             return objects
 
 m = MakeGUI()

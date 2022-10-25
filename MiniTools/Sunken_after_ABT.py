@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 import os
 import json
 import shutil
+import numpy as np
 
 class MakeGUI():
     def makegui(self):
@@ -68,9 +69,35 @@ try:
                         file_list += [j]
                     jsonfile = path + '/' + j
                     objects = handlejson(jsonfile=jsonfile, option='get')
+                    
+                    for t in range(len(objects['shapes']) - 1, -1, -1):
+                        points = objects['shapes'][t]['points'] 
+                        points = np.array(points, np.int32)
+
+                        # boundingbox
+                        if objects['shapes'][t]['shape_type'] == 'rectangle':
+                            lefttopx, lefttopy = points[0]
+                            rightdownx, rightdowny = points[1]
+
+                        #polygon
+                        else:
+                            x = points[:, 0]
+                            y = points[:, 1]
+                            lefttopx = min(x)
+                            rightdownx = max(x)
+                            lefttopy = min(y)
+                            rightdowny = max(y)
+                        if (max(lefttopx, rightdownx, lefttopy, rightdowny) > 3840) or (min(lefttopx, rightdownx, lefttopy, rightdowny) < 0):
+                            print(jsonfile + '에 라벨링 좌표 이상')
+                        w = max(lefttopx, rightdownx) - min(lefttopx, rightdownx)
+                        h = max(lefttopy, rightdowny) - min(lefttopy, rightdowny)
+                        area = w * h 
+                        if area <= 1024:
+                            del(objects['shapes'][t])   
+                    
                     objects['imageData'] = None
-                    objects['Latitude'] = round(objects['Latitude'],2)
-                    objects['Longitude'] = round(objects['Longitude'],2)
+                    objects['Latitude'] = round(objects['Latitude'],6)
+                    objects['Longitude'] = round(objects['Longitude'],6)
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
 
                     if (100 > objects['Longitude']) or (objects['Latitude'] > 50):
@@ -78,7 +105,7 @@ try:
                         os.makedirs(latlon_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
-                    if len(objects) != 17:
+                    if len(objects) != 18:
                         attr_error += [jsonfile]
                         os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1

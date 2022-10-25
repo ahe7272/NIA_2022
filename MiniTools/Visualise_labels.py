@@ -9,7 +9,7 @@ def getjson(jsonfile):
     return objects
 
 
-for (path, dir, files) in os.walk('C:/Users/Administrator/Desktop/22'):
+for (path, dir, files) in os.walk('C:/Users/Administrator/Desktop/Test'):
     for file in files:
         if file[-4:] == 'json':
             objects = getjson(path + '/' +file)
