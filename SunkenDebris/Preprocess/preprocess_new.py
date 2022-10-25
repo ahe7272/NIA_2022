@@ -87,7 +87,6 @@ def getSimilarity(img1, img2):
 
     (score, _) = ssim(crop1, crop2, full=True)
     # (score, _) = ssim(gray1, gray2, full=True)
-
     return score
 
 def preprocess_video(video, interval, savepath, water_info):
@@ -119,6 +118,7 @@ def preprocess_video(video, interval, savepath, water_info):
                 h, w, _ = image.shape
                 if (h == 3840) and  (w == 2160):
                     clahe_img = cv2.rotate(clahe_img, cv2.ROTATE_90_CLOCKWISE)
+                    Databin = img_to_b64(clahe_img)
                     h = 2160
                     w = 3840
                 elif (h not in [2160, 3840]) or (w not in [3840, 2160]):
@@ -160,6 +160,7 @@ def preprocess_img(image, savepath, water_info):
     h, w, _ = image.shape
     if (h == 3840) and  (w == 2160):
         clahe_img = cv2.rotate(clahe_img, cv2.ROTATE_90_CLOCKWISE)
+        Databin = img_to_b64(clahe_img)
         h = 2160
         w = 3840
     elif (h not in [2160, 3840]) or (w not in [3840, 2160]):
