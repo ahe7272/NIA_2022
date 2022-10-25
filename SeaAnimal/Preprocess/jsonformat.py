@@ -18,8 +18,9 @@ def getjsonform():
               "Weather": 0,
               "Transparency": 0,
               "Date_created": "2000-01-01", 
-              # "Source_video": None,
-              # "Video_time" : None,
-              # "Frame_no": None,
+              "Source_video": None,
+              "Video_time" : None,
+              "Frame_no": None,
+              "Collection_method" : 'Diver'
             }
   return objects
