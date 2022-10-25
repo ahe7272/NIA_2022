@@ -16,14 +16,6 @@ def classname_check(objects):
             classnameflag = False
     return classnameflag, classname_error
 
-def attribute_value(objects):
-    attr_error = ""
-    if len(objects) == 19:
-        return True, attr_error
-    else:
-        attr_error += '속성 개수 에러!\n' + str(len(objects)) + ' 개로 속성값에 이상이 있습니다.' + '\n'
-        return False, attr_error
-
 def size(objects, minsize):
     total_obj = len(objects['shapes'])
     for t in range(total_obj - 1, -1, -1):
@@ -116,13 +108,6 @@ def check(jsonfile, minsize, path):
     else:
         classes = False
         errorlist += str(imagefile) +' 파일 - ' + classname_error + '\n'
-
-    attributeflag, attribute_error = attribute_value(objects)
-    if attributeflag:
-        attribute = True
-    else:
-        attribute = False
-        errorlist += str(imagefile) + ' 파일 - ' + attribute_error + '\n'
     
     metaflag, meta_error = metacheck(glob.glob(excelpath))
     if metaflag:
@@ -137,7 +122,7 @@ def check(jsonfile, minsize, path):
         labels = False
         errorlist += str(imagefile) + ' 파일 - ' + label_error + '\n'
 
-    if classes and attribute and labels and meta:
+    if classes and labels and meta:
         shutil.move(jsonpath, processed_path + jsonfile)
         shutil.move(imagepath, processed_path + imagefile)
     return errorlist 
