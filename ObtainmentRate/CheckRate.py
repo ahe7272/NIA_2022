@@ -28,24 +28,47 @@ def ratio_of_objects(objects):
     imagesize = height * width 
     label_with_ratio = [] 
     maxratio = 0
+    Etc_list = [] 
     for o in range(len(objects['shapes'])):
         label = objects['shapes'][o]['label']
         points = np.array(objects['shapes'][o]['points'])
+        if label == 'Etc':
+            Etc_list += [label]
+            continue
         # bbx
         if objects['shapes'][o]['shape_type'] == 'rectangle':
             object_width = abs(points[0, 0] - points[1, 0])
             object_height = abs(points[0, 1] - points[1, 1])
+
         # polygon
         else:
             y = points[:, 0]
             x = points[:, 1]
             object_height = max(y) - min(y)    
             object_width = max(x) - min(x)     
-
         object_size = object_height * object_width
         if maxratio < (object_size / imagesize * 100):
             maxratio = (object_size / imagesize * 100)
         label_with_ratio.append((label, object_size / imagesize * 100))
+    if len(Etc_list) == len(objects['shapes']):
+        for o in range(len(objects['shapes'])):
+            label = objects['shapes'][o]['label']
+            points = np.array(objects['shapes'][o]['points'])
+            # bbx
+            if objects['shapes'][o]['shape_type'] == 'rectangle':
+                object_width = abs(points[0, 0] - points[1, 0])
+                object_height = abs(points[0, 1] - points[1, 1])
+
+            # polygon
+            else:
+                y = points[:, 0]
+                x = points[:, 1]
+                object_height = max(y) - min(y)    
+                object_width = max(x) - min(x)
+            object_size = object_height * object_width
+            if maxratio < (object_size / imagesize * 100):
+                maxratio = (object_size / imagesize * 100)
+            label_with_ratio.append((label, object_size / imagesize * 100)) 
     return maxratio, label_with_ratio 
 
 def classify_distance_4_debris(maxratio):
@@ -58,32 +81,32 @@ def classify_distance_4_debris(maxratio):
 
 def classify_distance_4_seaanimal(maxratio, maxlabel):
     if maxlabel == 'Asterias_amurensis':
-        farratio = 10
-        nearratio = 28
+        farratio = 0.9
+        nearratio = 8.09
     elif maxlabel == 'Asterina_pectinifera':
-        farratio = 12
-        nearratio = 32
+        farratio = 0.38
+        nearratio = 3.39
     elif maxlabel == 'Conch':
-        farratio = 3
-        nearratio = 10
+        farratio = 0.06
+        nearratio = 0.5
     elif maxlabel == 'Ecklonia_cava':
-        farratio = 17
-        nearratio = 43
+        farratio = 0
+        nearratio = 0
     elif maxlabel == 'Heliocidaris_crassispina':
-        farratio = 7
-        nearratio = 20
+        farratio = 0.2
+        nearratio = 1.78
     elif maxlabel == 'Hemicentrotus':
-        farratio = 7
-        nearratio = 20
+        farratio = 0.6
+        nearratio = 0.7
     elif maxlabel == 'Sargassum':
-        farratio = 28
-        nearratio = 57
+        farratio = 0
+        nearratio = 0
     elif maxlabel == 'Sea_hare':
-        farratio = 13
-        nearratio = 30
+        farratio = 0.84
+        nearratio = 7.53
     elif maxlabel == 'Turbo_cornutus':
-        farratio = 9
-        nearratio = 23
+        farratio = 0.27
+        nearratio = 2.43
     if maxratio <= farratio:
         return 'Far'
     elif (maxratio <= nearratio) and (maxratio > farratio): 
@@ -118,7 +141,21 @@ for root, dirs, files in os.walk(path):
             print(Json)
         if (D_or_S == 'S'):
             distance_flag = classify_distance_4_seaanimal(maxratio, maxlabel)
-        else:
+            if maxlabel not in ['Ecklonia_cava', 'Sargassum']:
+                if distance_flag == 'Near':
+                    objects['Distance'] = 0.5
+                elif distance_flag == 'Mid':
+                    objects['Distance'] = 1.0
+                elif distance_flag == 'Far':
+                    objects['Distance'] = 1.5
+            else:
+                if objects['Distance'] == 0.5:
+                    distance_flag = 'Near'
+                elif objects['Distance'] == 1.0:
+                    distance_flag = 'Mid'
+                elif objects['Distance'] == 1.5:
+                    distance_flag = 'Far'
+        elif (D_or_S == 'D'):
             distance_flag = classify_distance_4_debris(maxratio)
         if distance_flag == 'Near':
             dict_near[maxlabel] += 1
