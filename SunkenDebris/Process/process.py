@@ -14,6 +14,7 @@ from PIL.ExifTags import TAGS
 from PIL import Image
 from glob import glob
 import piexif
+import getpass
 
 # 전체 공유 주소: https://ifh.cc/v-8x5yaf.oCrngF.yR4Rzq.TvAS0x.F4Bj7d.65Gdtp.Z6gSOf.PW0b0s.9tHWQf
 
@@ -77,7 +78,7 @@ class MakeGUI():
                             selected_title_color='Black',
                             border_width=10)]        
                     ]
-        window = sg.Window('Process_08.17', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
+        window = sg.Window('Process_09.27', tab_group, resizable=True, grab_anywhere = True, element_justification='c') 
         return window
         
 def changeexif(imagefile, ID):
@@ -95,30 +96,31 @@ def changeexif(imagefile, ID):
     exif_dat = piexif.dump(exif_dict)
     image.save(imagefile, exif=exif_dat)
 
-def runLabelme():
-    conda_dirs = ["c:/Users/users/anaconda3", "d:/Users/users/anaconda3", 
+def runLabelme(): 
+    conda_dirs = ["c:/Users/users/anaconda3", "d:/Users/users/anaconda3", "c:/Users/User/Anaconda3", "c:/Users/Park/Anaconda3",
                   "c:/Users/Admin/anaconda3", "d:/Users/Admin/anaconda3", "c:/Users/admin/anaconda3", "d:/Users/admin/anaconda3", 
                   "c:/Users/Administrator/anaconda3", "d:/Users/Administrator/anaconda3",
                   "c:/Programdata/anaconda3", "d:/Programdata/anaconda3", 
-                  "c:/Users/{}/Anaconda3".format(os.getlogin()), "d:/Users/{}/Anaconda3".format(os.getlogin()), 
-                  "c:/사용자/{}/Anaconda3".format(os.getlogin()), "d:/사용자/{}/Anaconda3".format(os.getlogin()),
+                  "c:/Users/{}/Anaconda3".format(getpass.getuser()), "d:/Users/{}/Anaconda3".format(getpass.getuser()), 
+                  "c:/사용자/{}/Anaconda3".format(getpass.getuser()), "d:/사용자/{}/Anaconda3".format(getpass.getuser()),
                   "c:/anaconda3", "c:/Anaconda3", "d:/anaconda3", "d:/Anaconda3"]
+
     try:
         for Dir in conda_dirs:
             if os.path.isdir(Dir):
                 python_file = Dir + "/envs/nia/pythonw.exe"
-                labelme_file =  python_file[:-11] + "/Lib/site-packages/labelme/__main__.py"
+                labelme_file =  python_file[:-11] + "Lib/site-packages/labelme/__main__.py"
 
             if Dir == "no dir":
-                sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
+                sg.Popup("anaconda 경로를 찾지 못했습니다. (conda_dirs내 해당 경로 없음)", font =("Arial", 15), keep_on_top=True)
         
-        if np.__version__[:4] == '1.22':
-        
+        if np.__version__[:3] == '1.2':
             subprocess.Popen(python_file + ' ' + labelme_file,  stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
 
     except:
-        sg.Popup("anaconda 경로를 찾지 못했습니다. 담당자에게 알려주세요. 아래 메세지를 알려주세요.\n\n" + subprocess.getoutput('where labelme'), font =("Arial", 15), keep_on_top=True)
-        
+        sg.Popup("anaconda 경로를 찾지 못했습니다. (runLabelme 도중 에러)", font =("Arial", 15), keep_on_top=True)
+
+
 try:
     os.chdir(sys._MEIPASS)
     print(sys._MEIPASS)
