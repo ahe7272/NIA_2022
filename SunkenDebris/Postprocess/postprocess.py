@@ -11,8 +11,10 @@ import base64
 import cv2
 import numpy as np
 import shutil
+from classes import debris_dict
 
 pre_gdf = geopandas.read_file('NIA_2022\SunkenDebris\Postprocess\coastline.geojson')
+classes_dict= debris_dict()
 
 class MakeGUI():
     def makegui(self):
@@ -56,17 +58,22 @@ def makekoreacoastline():
     return gdf
 
 def restore_img(originals_path, path, objects, jsonfile):
+    try :
+        exist = objects['Origin_img']
+    except:
+        return objects
+
     try:
         Databin = objects['Origin_img'].encode('utf-8')
         f = io.BytesIO()
         f.write(base64.b64decode(Databin))
         img = np.array(Image.open(f))
         objects.pop('Origin_img')
-        cv2.imwrite(originals_path + 'Original_'+ jsonfile[:-5] + '.jpg', img)
+        cv2.imwrite(originals_path + jsonfile[:-5] + '.jpg', img)
         return objects
     except:
         try:
-            if os.path.isfile(originals_path + 'Original_' + jsonfile[:-5] + '.jpg'):
+            if os.path.isfile(originals_path + jsonfile[:-5] + '.jpg'):
                 return objects
             else:
                 src = cv2.imread(path + '/' + jsonfile[:-5] + '.jpg' , cv2.IMREAD_COLOR)
@@ -84,13 +91,53 @@ def restore_img(originals_path, path, objects, jsonfile):
 
                 blured = img.filter(ImageFilter.BoxBlur(3))  
 
-                name = 'Original_' + jsonfile[:-5] + '.jpg'
+                name = jsonfile[:-5] + '.jpg'
                 blured.save(originals_path + name)
                 objects.pop('Origin_img')
                 return objects
         except:
             print(path + '/' + jsonfile)
             return objects
+
+
+# 이미지내 객체 비율
+def ratio_of_objects(objects):
+    height = objects['imageHeight']
+    width = objects['imageWidth']
+    imagesize = height * width 
+    label_with_ratio = [] 
+    maxratio = 0
+    for o in range(len(objects['shapes'])):
+        label = objects['shapes'][o]['label']
+        points = np.array(objects['shapes'][o]['points'])
+        # bbx
+        if objects['shapes'][o]['shape_type'] == 'rectangle':
+            object_width = abs(points[0, 0] - points[1, 0])
+            object_height = abs(points[0, 1] - points[1, 1])
+        # polygon
+        else:
+            y = points[:, 0]
+            x = points[:, 1]
+            object_height = max(y) - min(y)    
+            object_width = max(x) - min(x)     
+
+        object_size = object_height * object_width
+        if maxratio < (object_size / imagesize * 100):
+            maxratio = (object_size / imagesize * 100)
+        label_with_ratio.append((label, object_size / imagesize * 100))
+    return maxratio, label_with_ratio 
+
+def classify_distance_4_debris(maxratio):
+    if maxratio <= 20:
+        return 'Far'
+    elif (maxratio <= 60) and (maxratio > 20): 
+        return 'Mid'
+    elif maxratio > 60:
+        return 'Near'
+
+
+
+
 
 m = MakeGUI()
 window = m.makegui()
@@ -137,21 +184,16 @@ try:
                         continue
                     else:
                         file_list += [j]
-                    jsonfile = path + '/' + j
                     objects = handlejson(jsonfile=jsonfile, option='get')
                     objects['imageData'] = None
                     objects = restore_img(originals_path, path, objects, j)
+                    objects['Latitude'] = round(float(objects['Latitude']),6)
+                    objects['Longitude'] = round(float(objects['Longitude']),6)  
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
-                    # print(path.split('\\')[-1])
-                    # print(attr_error_path + path.split('\\')[-1])
+
                     if (100 > objects['Longitude']) or (objects['Latitude'] > 50):
                         latlon_error += [jsonfile]
                         os.makedirs(latlon_error_path + path.split('/')[-1] , exist_ok=True)
-                        cnt += 1
-                        continue
-                    if len(objects) != 17:
-                        attr_error += [jsonfile]
-                        os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
                     if len(objects['shapes']) == 0:
@@ -159,6 +201,23 @@ try:
                         os.makedirs(empty_label_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
+
+                    maxratio, label_with_ratio = ratio_of_objects(objects)
+                    if len(label_with_ratio) > 1:
+                        for label, ratio in label_with_ratio:
+                            if maxratio == ratio:
+                                maxlabel = label
+                    else:
+                        maxlabel = label_with_ratio[0][0]   
+                    if (maxlabel not in ['Fish_net', 'Fish_trap', 'Glass', 'Metal', 'Plastic', 'Wood', 'Rope', 'Rubber_etc', 'Rubber_tire', 'Etc']):
+                        print(j)
+                    distance_flag = classify_distance_4_debris(maxratio)
+                    if distance_flag == 'Near':
+                        objects['Distance'] = 0.5
+                    elif distance_flag == 'Mid':
+                        objects['Distance'] = 1.0
+                    elif distance_flag == 'Far':
+                        objects['Distance'] = 1.5
                     if objects['CDist'] == 0:
                         lat = objects['Latitude']
                         lon = objects['Longitude']
@@ -181,6 +240,11 @@ try:
                         objects['CDist'] = distance
 
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
+                    if len(objects) != 18:
+                        attr_error += [jsonfile]
+                        os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
+                        cnt += 1
+                        continue
                     for shape in objects['shapes']:
                         if shape['label'] not in ['Fish_net', 'Fish_trap', 'Glass', 'Metal', 'Plastic', 'Wood', 'Rope', 'Rubber_etc', 'Rubber_tire', 'Etc']:
                             wrong_label += [jsonfile]
@@ -218,7 +282,6 @@ try:
                     for duplicated_file in duplicates:
                         shutil.move(duplicated_file, dup_path + duplicated_file.split('/')[-2] + '/' + duplicated_file.split('/')[-1])
                         shutil.move(duplicated_file[:-5] + '.jpg', dup_path + duplicated_file.split('/')[-2] + '/' + duplicated_file.split('/')[-1][:-5] + '.jpg')
-                        shutil.move(originals_path + 'Original_' + duplicated_file.split('/')[-1][:-5] + '.jpg', dup_path + duplicated_file.split('\\')[-1].split('/')[0] + '/Original_' + duplicated_file.split('/')[-1][:-5] + '.jpg')
                     for latlon_error_file in latlon_error:
                         shutil.move(latlon_error_file, latlon_error_path + latlon_error_file.split('/')[-2] + '/' + latlon_error_file.split('/')[-1])
                         shutil.move(latlon_error_file[:-5] + '.jpg', latlon_error_path + latlon_error_file.split('/')[-2] + '/' + latlon_error_file.split('/')[-1][:-5] + '.jpg')
