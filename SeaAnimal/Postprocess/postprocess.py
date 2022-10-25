@@ -2,6 +2,12 @@ import PySimpleGUI as sg
 import os
 import json
 import shutil
+import io
+from PIL import Image, ImageFilter
+import base64
+import cv2
+import numpy as np
+from Distance_adder import ratio_of_objects, classify_distance_4_seaanimal
 
 class MakeGUI():
     def makegui(self):
@@ -24,6 +30,44 @@ def handlejson(jsonfile, option, objects=''):
         with open(jsonfile, 'w') as j:
             json.dump(objects, j, indent='\t')
 
+def restore_img(originals_path, path, objects, jsonfile):
+    try:
+        Databin = objects['Origin_img'].encode('utf-8')
+        f = io.BytesIO()
+        f.write(base64.b64decode(Databin))
+        img = np.array(Image.open(f))
+        objects.pop('Origin_img')
+        cv2.imwrite(originals_path + jsonfile[:-5] + '.jpg', img)
+        return objects
+
+    except:
+        try:
+            if os.path.isfile(originals_path + jsonfile[:-5] + '.jpg'):
+                return objects
+            else:
+                src = cv2.imread(path + '/' + jsonfile[:-5] + '.jpg' , cv2.IMREAD_COLOR)
+                alpha1 = -0.5 
+                alpha2 = -0.3
+
+                b, g, r = cv2.split(src)
+
+                bdst = np.clip((1 + alpha1) * b - 128 * alpha1, 0, 255).astype(np.uint8)
+                gdst = np.clip((1 + alpha1) * g - 128 * alpha1, 0, 255).astype(np.uint8)
+                rdst = np.clip((1 + alpha1) * r - 128 * alpha2, 0, 255).astype(np.uint8)
+                
+                img = cv2.merge((rdst, gdst, bdst))
+                img = Image.fromarray(img)
+
+                blured = img.filter(ImageFilter.BoxBlur(3))  
+
+                name = jsonfile[:-5] + '.jpg'
+                blured.save(originals_path + name)
+                objects.pop('Origin_img')
+                return objects
+        except:
+            # print(path + '/' + jsonfile)
+            return objects
+
 m = MakeGUI()
 window = m.makegui()
 duplicates = []
@@ -42,14 +86,16 @@ try:
         if event == 'Run':
             cnt = 0
             file_length = 0
-
             dup_path = values['Path'] + '/Duplicates/'
             latlon_error_path = values['Path'] + '/Latlon_errors/'
             attr_error_path = values['Path'] + '/Attr_errors/'
+            originals_path = values['Path'] + '/Originals/'
             polygon_in_bbox_path = values['Path'] + '/Polygon_in_bbox/'
             bbox_in_polygon_path = values['Path'] + '/Bbox_in_polygon/'
             empty_label_path = values['Path'] + '/Empty_label/'
             wrong_label_path = values['Path'] + '/Wrong_label/'
+
+            os.makedirs(originals_path, exist_ok=True)
 
             for (path, dir, files) in os.walk(values['Path']):
                 file_length += len([Json for Json in files if Json.lower().endswith('.json')])
@@ -69,20 +115,46 @@ try:
                         file_list += [j]
                     objects = handlejson(jsonfile=jsonfile, option='get')
                     objects['imageData'] = None
+                    objects['Latitude'] = round(objects['Latitude'],6)
+                    objects['Longitude'] = round(objects['Longitude'],6)
+                    objects = restore_img(originals_path, path, objects, j)
+                    
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
                     if (100 > objects['Longitude']) or (objects['Latitude'] > 50):
                         latlon_error += [jsonfile]
                         os.makedirs(latlon_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
-                    if len(objects) != 19:
-                        attr_error += [jsonfile]
-                        os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
-                        cnt += 1
-                        continue
                     if len(objects['shapes']) == 0:
                         empty_label += [jsonfile]
                         os.makedirs(empty_label_path + path.split('/')[-1] , exist_ok=True)
+                        cnt += 1
+                        continue
+                    maxratio, label_with_ratio = ratio_of_objects(objects)
+                    if len(label_with_ratio) > 1:
+                        for label, ratio in label_with_ratio:
+                            if maxratio == ratio:
+                                maxlabel = label
+                    else:
+                        maxlabel = label_with_ratio[0][0]   
+                    if (maxlabel not in ['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Heliocidaris_crassispina', 'Hemicentrotus', 'Sea_hare', 'Turbo_cornutus']):
+                        print(j)
+                    distance_flag = classify_distance_4_seaanimal(maxratio, maxlabel)
+                    if maxlabel not in ['Ecklonia_cava', 'Sargassum']:
+                        if distance_flag == 'Near':
+                            objects['Distance'] = 0.5
+                        elif distance_flag == 'Mid':
+                            objects['Distance'] = 1.0
+                        elif distance_flag == 'Far':
+                            objects['Distance'] = 1.5
+                    if len(objects['Source_video'].split('ROV')) > 1:
+                        objects['Collection_method'] = 'ROV'
+                    else:
+                        objects['Collection_method'] = 'Diver'
+                    handlejson(jsonfile=jsonfile, option='save', objects=objects)
+                    if len(objects) != 24:
+                        attr_error += [jsonfile]
+                        os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
                     for shape in objects['shapes']:
