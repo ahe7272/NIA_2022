@@ -33,7 +33,9 @@ for root, dirs, files in os.walk(path):
             continue   
         labeldict = copy.deepcopy(classes_dict)
         for label in objects['shapes']:
-            labeldict[label['label']] += 1
+            if label['label'] not in dict_total.keys():
+                print(Json)
+                labeldict[label['label']] += 1
         for k, v in labeldict.items():
             dict_total[k] += v
          

@@ -81,32 +81,32 @@ def classify_distance_4_debris(maxratio):
 
 def classify_distance_4_seaanimal(maxratio, maxlabel):
     if maxlabel == 'Asterias_amurensis':
-        farratio = 0.9
-        nearratio = 8.09
+        farratio = 5.0938
+        nearratio = 20.3752
     elif maxlabel == 'Asterina_pectinifera':
-        farratio = 0.38
-        nearratio = 3.39
+        farratio = 1.7
+        nearratio = 6.8
     elif maxlabel == 'Conch':
-        farratio = 0.06
-        nearratio = 0.5
+        farratio = 0.3692
+        nearratio = 1.4769
     elif maxlabel == 'Ecklonia_cava':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Heliocidaris_crassispina':
-        farratio = 0.2
-        nearratio = 1.78
+        farratio = 1.3 
+        nearratio = 5.1
     elif maxlabel == 'Hemicentrotus':
         farratio = 0.6
-        nearratio = 0.7
+        nearratio = 2.4
     elif maxlabel == 'Sargassum':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Sea_hare':
-        farratio = 0.84
-        nearratio = 7.53
+        farratio = 3.6
+        nearratio = 14.6
     elif maxlabel == 'Turbo_cornutus':
-        farratio = 0.27
-        nearratio = 2.43
+        farratio = 2.2
+        nearratio = 8.9
     if maxratio <= farratio:
         return 'Far'
     elif (maxratio <= nearratio) and (maxratio > farratio): 

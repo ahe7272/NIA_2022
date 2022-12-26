@@ -5,13 +5,13 @@ from classes import debris_dict, sea_animal_dict
 import pandas as pd
 import copy
 
-path = input("달성도 excel 파일 생성을 위한 주차 작업물 폴더 경로를 입력하세요.\n")
+path = input("Clustering을 확인할 폴더 경로를 입력하세요.\n")
 D_or_S = input("침적 데이터면 D, 조식동물이면 S를 입력해주세요. ")
 if D_or_S == 'D':
-    savepath = 'C:/Users/Administrator/Documents/Github/NIA_2022/ObtainmentRate/Rate_excels/SunkenDebris'
+    savepath = 'C:/Users/Administrator/Desktop'
     classes_dict= debris_dict()
 elif D_or_S == 'S':
-    savepath = 'C:/Users/Administrator/Documents/Github/NIA_2022/ObtainmentRate/Rate_excels/SeaAnimals'
+    savepath = 'C:/Users/Administrator/Desktop'
     classes_dict= sea_animal_dict()
 else:
     exit()
@@ -31,6 +31,12 @@ def ratio_of_objects(objects):
     for o in range(len(objects['shapes'])):
         label = objects['shapes'][o]['label']
         points = np.array(objects['shapes'][o]['points'])
+        try:
+            size = objects['shapes'][o]['Size']
+        except:
+            continue
+        if objects['shapes'][o]['Size'] == 0:
+            continue
         # bbx
         if objects['shapes'][o]['shape_type'] == 'rectangle':
             object_width = abs(points[0, 0] - points[1, 0])
@@ -68,6 +74,7 @@ for root, dirs, files in os.walk(path):
         name = os.path.splitext(Json)[0]
         jsonfile = os.path.join(root, name + '.json')
         objects = getjson(jsonfile)
+        print(Json)
         if len(objects['shapes']) == 0:
             print(Json)
             continue   
