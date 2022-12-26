@@ -206,7 +206,7 @@ def check_waterinfo(water_info):
         flag_array[3] = False
     if 33.11 > water_info['Latitude'] or water_info['Latitude'] > 38.61:
         flag_array[5] = False
-    if 124.6 > water_info['Longitude'] or water_info['Longitude'] > 131.87:
+    if 124.6 > water_info['Longitude'] or water_info['Longitude'] > 132:
         flag_array[6] = False
     if 0 > water_info['Depth']:
         flag_array[7] = False

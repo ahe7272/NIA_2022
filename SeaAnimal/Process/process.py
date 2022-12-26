@@ -162,6 +162,7 @@ try:
                 for each_json in jsonlist:
                     jsonfullname = os.path.split(each_json)[-1]
                     jsonname = os.path.splitext(jsonfullname)[0]
+                    print(jsonname)
                     with open(each_json) as jsontosave:
                         objects = json.load(jsontosave)
                         objects['ID'] = userID

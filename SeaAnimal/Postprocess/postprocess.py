@@ -41,6 +41,7 @@ def restore_img(originals_path, path, objects, jsonfile):
         return objects
 
     except:
+        return objects
         try:
             if os.path.isfile(originals_path + jsonfile[:-5] + '.jpg'):
                 return objects
@@ -78,6 +79,7 @@ bbox_in_polygon = []
 file_list = []
 empty_label = []
 wrong_label = [] 
+no_distance = []
 
 try:
     while True:    
@@ -94,7 +96,7 @@ try:
             bbox_in_polygon_path = values['Path'] + '/Bbox_in_polygon/'
             empty_label_path = values['Path'] + '/Empty_label/'
             wrong_label_path = values['Path'] + '/Wrong_label/'
-
+            No_distance_path = values['Path'] + '/No_Distance/'
             os.makedirs(originals_path, exist_ok=True)
 
             for (path, dir, files) in os.walk(values['Path']):
@@ -104,6 +106,7 @@ try:
                 jsonlist = [Json for Json in files if Json.lower().endswith('.json')]
                 path = path.replace('\\', '/')
                 for j in jsonlist:
+                    print(path, j)
                     shape_flag = False
                     jsonfile = path + '/' + j
                     if j in file_list:
@@ -117,6 +120,11 @@ try:
                     objects['imageData'] = None
                     objects['Latitude'] = round(objects['Latitude'],6)
                     objects['Longitude'] = round(objects['Longitude'],6)
+                    if objects['imageHeight'] != 2160:
+                        print(j)
+                    objects['imageHeight'] = 2160
+                    objects['imageWidth'] = 3840
+
                     objects = restore_img(originals_path, path, objects, j)
                     
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
@@ -130,6 +138,62 @@ try:
                         os.makedirs(empty_label_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
+        
+                    if values['Bbox']:
+                        for i in range(len(objects['shapes'])):
+                            if (objects['shapes'][i]['points'][0][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][0][0]) - objects['imageWidth']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][0][0])
+                                else:
+                                    objects['shapes'][i]['points'][0][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][0][0] < 0):
+                                objects['shapes'][i]['points'][0][0] = 0
+
+                            if (objects['shapes'][i]['points'][1][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][1][0]) - objects['imageWidth']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][1][0])
+                                else:
+                                    objects['shapes'][i]['points'][1][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][1][0] < 0):
+                                objects['shapes'][i]['points'][1][0] = 0
+
+                            if (objects['shapes'][i]['points'][0][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][0][1]) - objects['imageHeight']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][0][1])
+                                else:
+                                    objects['shapes'][i]['points'][0][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][0][1] < 0):
+                                objects['shapes'][i]['points'][0][1] = 0
+
+                            if (objects['shapes'][i]['points'][1][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][1][1] > objects['imageHeight'])) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][1][1])
+                                else:
+                                    objects['shapes'][i]['points'][1][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][1][1] < 0):
+                                objects['shapes'][i]['points'][1][1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)   
+                    if values['Polygon']:          
+                        for label in objects['shapes']:
+                            for point in label['points']:
+                                if (point[0] > objects['imageWidth']):
+                                    if (point[0] - objects['imageWidth']) > 3: 
+                                        print(jsonfile, point[0])
+                                    else:
+                                        point[0] = objects['imageWidth']
+
+                                if (point[0] < 0):
+                                    point[0] = 0
+
+                                if (point[1] > objects['imageHeight']):
+                                    if (point[1] - objects['imageHeight']) > 3: 
+                                        print(jsonfile, point[1])
+                                    else:
+                                        point[1] = objects['imageHeight']
+                                
+                                if (point[1] < 0):
+                                    point[1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)   
                     maxratio, label_with_ratio = ratio_of_objects(objects)
                     if len(label_with_ratio) > 1:
                         for label, ratio in label_with_ratio:
@@ -137,7 +201,7 @@ try:
                                 maxlabel = label
                     else:
                         maxlabel = label_with_ratio[0][0]   
-                    if (maxlabel not in ['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Heliocidaris_crassispina', 'Hemicentrotus', 'Sea_hare', 'Turbo_cornutus']):
+                    if (maxlabel not in ['Asterias_amurensis', 'Ecklonia_cava', 'Sargassum', 'Asterina_pectinifera', 'Conch', 'Heliocidaris_crassispina', 'Hemicentrotus', 'Sea_hare', 'Turbo_cornutus']):
                         print(j)
                     distance_flag = classify_distance_4_seaanimal(maxratio, maxlabel)
                     if maxlabel not in ['Ecklonia_cava', 'Sargassum']:
@@ -147,6 +211,10 @@ try:
                             objects['Distance'] = 1.0
                         elif distance_flag == 'Far':
                             objects['Distance'] = 1.5
+                    if objects['Distance'] == 0:
+                        no_distance += [jsonfile]
+                        os.makedirs(No_distance_path + path.split('/')[-1] , exist_ok=True)
+                        # print(j, 'Distance 확인 필요')
                     if len(objects['Source_video'].split('ROV')) > 1:
                         objects['Collection_method'] = 'ROV'
                     else:
@@ -208,11 +276,16 @@ try:
                         shutil.move(bbox_file, bbox_in_polygon_path + bbox_file.split('/')[-2] + '/' + bbox_file.split('/')[-1])
                         shutil.move(bbox_file[:-5] + '.jpg', bbox_in_polygon_path + bbox_file.split('/')[-2] + '/' + bbox_file.split('/')[-1][:-5] + '.jpg')
                     for empty_file in empty_label:
+                        print(empty_file)
+                        print(empty_label_path + empty_file.split('/')[-2] + '/' + empty_file.split('/')[-1])
                         shutil.move(empty_file, empty_label_path + empty_file.split('/')[-2] + '/' + empty_file.split('/')[-1])
                         shutil.move(empty_file[:-5] + '.jpg', empty_label_path + empty_file.split('/')[-2] + '/' + empty_file.split('/')[-1][:-5] + '.jpg')
                     for wrong_file in wrong_label:
                         shutil.move(wrong_file, wrong_label_path + wrong_file.split('/')[-2] + '/' + wrong_file.split('/')[-1])
                         shutil.move(wrong_file[:-5] + '.jpg', wrong_label_path + wrong_file.split('/')[-2] + '/' + wrong_file.split('/')[-1][:-5] + '.jpg')
+                    for distance_file in no_distance:
+                        shutil.move(distance_file, No_distance_path + distance_file.split('/')[-2] + '/' + distance_file.split('/')[-1])
+                        shutil.move(distance_file[:-5] + '.jpg', No_distance_path + distance_file.split('/')[-2] + '/' + distance_file.split('/')[-1][:-5] + '.jpg')
                     sg.Popup('Postprocess 완료^^!', font =("Arial", 13), keep_on_top=True)
                     break
         if event in (None, 'Exit'):

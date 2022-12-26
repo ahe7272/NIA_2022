@@ -4,6 +4,7 @@ import json
 import numpy as np
 import cv2 
 
+
 def handlejson(jsonfile, option, objects=''):
     if option == 'get':
         with open(jsonfile) as j:
@@ -14,7 +15,6 @@ def handlejson(jsonfile, option, objects=''):
             json.dump(objects, j, indent='\t')
 
 def getMask(shape):
-
     imgH = 2160
     imgW = 3840
 
@@ -28,7 +28,7 @@ dataset = fo.Dataset()
 dataset.default_classes = ['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Ecklonia_cava', 'Heliocidaris_crassispina', 'Hemicentrotus', 'Sargassum', 'Sea_hare', 'Turbo_cornutus']
 dataset.save()
 labels = ['Asterias_amurensis', 'Asterina_pectinifera', 'Conch', 'Ecklonia_cava', 'Heliocidaris_crassispina', 'Hemicentrotus', 'Sargassum', 'Sea_hare', 'Turbo_cornutus']
-all_path = "C:/Dataset/ori/Polygon"
+all_path = input('경로 : ')
 
 samples = []
 
@@ -47,6 +47,7 @@ for (path, dir, files) in os.walk(all_path):
                     left_top_x = min(shape['points'][0][0], shape['points'][1][0])
                     left_top_y = min(shape['points'][0][1], shape['points'][1][1])
                     bounding_box = [left_top_x, left_top_y, box_width, box_height]
+                    # Meta = {"Size": 0, "Weight": 0, "points": []}
                     Meta = {"Size": shape['Size'], "Weight": shape['Weight'], "points": []}
                     detections.append(fo.Detection(label=label, bounding_box=bounding_box, **Meta))
 
