@@ -175,6 +175,7 @@ try:
                 jsonlist = [Json for Json in files if Json.lower().endswith('.json')]
                 path = path.replace('\\', '/')
                 for j in jsonlist:
+                    # print(j)
                     shape_flag = False
                     jsonfile = path + '/' + j
                     if j in file_list:
@@ -189,6 +190,8 @@ try:
                     objects = restore_img(originals_path, path, objects, j)
                     objects['Latitude'] = round(float(objects['Latitude']),6)
                     objects['Longitude'] = round(float(objects['Longitude']),6)  
+                    objects['imageHeight'] = 2160
+                    objects['imageWidth'] = 3840
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
 
                     if (100 > objects['Longitude']) or (objects['Latitude'] > 50):
@@ -202,6 +205,61 @@ try:
                         cnt += 1
                         continue
 
+                    if values['Bbox']:
+                        for i in range(len(objects['shapes'])):
+                            if (objects['shapes'][i]['points'][0][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][0][0]) - objects['imageWidth']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][0][0])
+                                else:
+                                    objects['shapes'][i]['points'][0][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][0][0] < 0):
+                                objects['shapes'][i]['points'][0][0] = 0
+
+                            if (objects['shapes'][i]['points'][1][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][1][0]) - objects['imageWidth']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][1][0])
+                                else:
+                                    objects['shapes'][i]['points'][1][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][1][0] < 0):
+                                objects['shapes'][i]['points'][1][0] = 0
+
+                            if (objects['shapes'][i]['points'][0][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][0][1]) - objects['imageHeight']) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][0][1])
+                                else:
+                                    objects['shapes'][i]['points'][0][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][0][1] < 0):
+                                objects['shapes'][i]['points'][0][1] = 0
+
+                            if (objects['shapes'][i]['points'][1][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][1][1] > objects['imageHeight'])) > 3: 
+                                    print(jsonfile, objects['shapes'][i]['points'][1][1])
+                                else:
+                                    objects['shapes'][i]['points'][1][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][1][1] < 0):
+                                objects['shapes'][i]['points'][1][1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)   
+                    if values['Polygon']:          
+                        for label in objects['shapes']:
+                            for point in label['points']:
+                                if (point[0] > objects['imageWidth']):
+                                    if (point[0] - objects['imageWidth']) > 3: 
+                                        print(jsonfile, point[0])
+                                    else:
+                                        point[0] = objects['imageWidth']
+
+                                if (point[0] < 0):
+                                    point[0] = 0
+
+                                if (point[1] > objects['imageHeight']):
+                                    if (point[1] - objects['imageHeight']) > 3: 
+                                        print(jsonfile, point[1])
+                                    else:
+                                        point[1] = objects['imageHeight']
+                                
+                                if (point[1] < 0):
+                                    point[1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects) 
                     maxratio, label_with_ratio = ratio_of_objects(objects)
                     if len(label_with_ratio) > 1:
                         for label, ratio in label_with_ratio:
