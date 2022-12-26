@@ -92,8 +92,6 @@ try:
 
                     objects = handlejson(jsonfile=jsonfile, option='get')
                     objects['imageData'] = None
-                    objects['Latitude'] = round(objects['Latitude'],2)
-                    objects['Longitude'] = round(objects['Longitude'],2)
                     objects = restore_img(originals_path, path, objects, j)
                     
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)

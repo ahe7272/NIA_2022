@@ -35,12 +35,16 @@ bbox_in_polygon = []
 file_list = []
 empty_label = []
 wrong_label = [] 
+no_distance = []
+labelxy_error = []
 
 try:
     while True:    
         event, values = window.read()    
         progress_bar = window.find_element('progress')
         if event == 'Run':
+            sg.Popup('기구축을 돌리고 있지는 않은지 확인^^!', font =("Arial", 13), keep_on_top=True)
+
             cnt = 0
             file_length = 0
             dup_path = values['Path'] + '/Duplicates/'
@@ -50,6 +54,8 @@ try:
             bbox_in_polygon_path = values['Path'] + '/Bbox_in_polygon/'
             empty_label_path = values['Path'] + '/Empty_label/'
             wrong_label_path = values['Path'] + '/Wrong_label/'
+            No_distance_path = values['Path'] + '/No_Distance/'
+            labelxy_error_path = values['Path'] + '/labelxy_error/'
 
             for (path, dir, files) in os.walk(values['Path']):
                 file_length += len([Json for Json in files if Json.lower().endswith('.json')])
@@ -69,7 +75,87 @@ try:
                         file_list += [j]
                     jsonfile = path + '/' + j
                     objects = handlejson(jsonfile=jsonfile, option='get')
+                    if len(objects['shapes']) == 0:
+                        empty_label += [jsonfile]
+                        os.makedirs(empty_label_path + path.split('/')[-1] , exist_ok=True)
+                        cnt += 1
+                        continue
+                    cnt += 1
                     
+                    if values['Bbox']:
+                        for i in range(len(objects['shapes'])):
+                            if (objects['shapes'][i]['points'][0][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][0][0]) - objects['imageWidth']) > 100: 
+                                    if jsonfile not in labelxy_error:
+                                        labelxy_error += [jsonfile]
+                                        os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                        break
+                                else:
+                                    objects['shapes'][i]['points'][0][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][0][0] < 0):
+                                objects['shapes'][i]['points'][0][0] = 0
+
+                            if (objects['shapes'][i]['points'][1][0] > objects['imageWidth']):
+                                if ((objects['shapes'][i]['points'][1][0]) - objects['imageWidth']) > 100: 
+                                    if jsonfile not in labelxy_error:
+                                        labelxy_error += [jsonfile]
+                                        os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                        break
+                                else:
+                                    objects['shapes'][i]['points'][1][0] = objects['imageWidth']
+                            if (objects['shapes'][i]['points'][1][0] < 0):
+                                objects['shapes'][i]['points'][1][0] = 0
+
+                            if (objects['shapes'][i]['points'][0][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][0][1]) - objects['imageHeight']) > 100: 
+                                    if jsonfile not in labelxy_error:
+                                        labelxy_error += [jsonfile]
+                                        os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                        break
+                                else:
+                                    objects['shapes'][i]['points'][0][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][0][1] < 0):
+                                objects['shapes'][i]['points'][0][1] = 0
+
+                            if (objects['shapes'][i]['points'][1][1] > objects['imageHeight']):
+                                if ((objects['shapes'][i]['points'][1][1] > objects['imageHeight'])) > 100: 
+                                    if jsonfile not in labelxy_error:
+                                        labelxy_error += [jsonfile]
+                                        os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                        break
+                                else:
+                                    objects['shapes'][i]['points'][1][1] = objects['imageHeight']
+                            if (objects['shapes'][i]['points'][1][1] < 0):
+                                objects['shapes'][i]['points'][1][1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)   
+                    if values['Polygon']:          
+                        for label in objects['shapes']:
+                            for point in label['points']:
+                                if (point[0] > objects['imageWidth']):
+                                    if (point[0] - objects['imageWidth']) > 100: 
+                                        if jsonfile not in labelxy_error:
+                                            labelxy_error += [jsonfile]
+                                            os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                            break
+                                    else:
+                                        point[0] = objects['imageWidth']
+
+                                if (point[0] < 0):
+                                    point[0] = 0
+
+                                if (point[1] > objects['imageHeight']):
+                                    if (point[1] - objects['imageHeight']) > 100: 
+                                        if jsonfile not in labelxy_error:
+                                            labelxy_error += [jsonfile]
+                                            os.makedirs(labelxy_error_path + path.split('/')[-1] , exist_ok=True)
+                                            break
+                                    else:
+                                        point[1] = objects['imageHeight']
+                                
+                                if (point[1] < 0):
+                                    point[1] = 0
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)   
+
                     for t in range(len(objects['shapes']) - 1, -1, -1):
                         points = objects['shapes'][t]['points'] 
                         points = np.array(points, np.int32)
@@ -87,10 +173,10 @@ try:
                             rightdownx = max(x)
                             lefttopy = min(y)
                             rightdowny = max(y)
-                        if (max(lefttopx, rightdownx, lefttopy, rightdowny) > 3840) or (min(lefttopx, rightdownx, lefttopy, rightdowny) < 0):
-                            print(jsonfile + '에 라벨링 좌표 이상')
                         w = max(lefttopx, rightdownx) - min(lefttopx, rightdownx)
                         h = max(lefttopy, rightdowny) - min(lefttopy, rightdowny)
+                        if max(lefttopx, lefttopy, rightdownx, rightdowny)  > 3840:
+                            continue
                         area = w * h 
                         if area <= 1024:
                             del(objects['shapes'][t])   
@@ -98,6 +184,8 @@ try:
                     objects['imageData'] = None
                     objects['Latitude'] = round(objects['Latitude'],6)
                     objects['Longitude'] = round(objects['Longitude'],6)
+                    objects['imageHeight'] = 2160
+                    objects['imageWidth'] = 3840
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
 
                     if (100 > objects['Longitude']) or (objects['Latitude'] > 50):
@@ -105,16 +193,28 @@ try:
                         os.makedirs(latlon_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
-                    if len(objects) != 18:
+                    try:
+                        objects.pop('ID')
+                        handlejson(jsonfile=jsonfile, option='save', objects=objects)
+                    except:
+                        pass
+                    try:
+                        if objects['Distance'] == 0:
+                            no_distance += [jsonfile]
+                            cnt += 1
+                            os.makedirs(No_distance_path + path.split('/')[-1] , exist_ok=True)
+                            continue
+                    except:
+                        no_distance += [jsonfile]
+                        cnt += 1
+                        os.makedirs(No_distance_path + path.split('/')[-1] , exist_ok=True)
+                        continue
+                    if len(objects) != 17:
                         attr_error += [jsonfile]
                         os.makedirs(attr_error_path + path.split('/')[-1] , exist_ok=True)
                         cnt += 1
                         continue
-                    if len(objects['shapes']) == 0:
-                        empty_label += [jsonfile]
-                        os.makedirs(empty_label_path + path.split('/')[-1] , exist_ok=True)
-                        cnt += 1
-                        continue
+                    
                     
                     handlejson(jsonfile=jsonfile, option='save', objects=objects)
                     for shape in objects['shapes']:
@@ -146,8 +246,6 @@ try:
                     if shape_flag:
                         cnt += 1
                         continue
-                    else:
-                        cnt += 1
                     progress_bar.UpdateBar(cnt, file_length)
                 if cnt == file_length:
                     progress_bar.UpdateBar(cnt, file_length)
@@ -173,6 +271,12 @@ try:
                     for wrong_file in wrong_label:
                         shutil.move(wrong_file, wrong_label_path + wrong_file.split('/')[-2] + '/' + wrong_file.split('/')[-1])
                         shutil.move(wrong_file[:-5] + '.jpg', wrong_label_path + wrong_file.split('/')[-2] + '/' + wrong_file.split('/')[-1][:-5] + '.jpg')
+                    for distance_file in no_distance:
+                        shutil.move(distance_file, No_distance_path + distance_file.split('/')[-2] + '/' + distance_file.split('/')[-1])
+                        shutil.move(distance_file[:-5] + '.jpg', No_distance_path + distance_file.split('/')[-2] + '/' + distance_file.split('/')[-1][:-5] + '.jpg')
+                    for labelxy_error_file in labelxy_error:
+                        shutil.move(labelxy_error_file, labelxy_error_path + labelxy_error_file.split('/')[-2] + '/' + labelxy_error_file.split('/')[-1])
+                        shutil.move(labelxy_error_file[:-5] + '.jpg', labelxy_error_path + labelxy_error_file.split('/')[-2] + '/' + labelxy_error_file.split('/')[-1][:-5] + '.jpg')
                     sg.Popup('Postprocess 완료^^!', font =("Arial", 13), keep_on_top=True)
                     break
         if event in (None, 'Exit'):

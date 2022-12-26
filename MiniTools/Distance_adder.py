@@ -8,6 +8,7 @@ def getjson(jsonfile):
         objects = json.load(j)
     return objects
 
+running_path = input('경로: ')
 D_or_S = input("침적 데이터면 D, 조식동물이면 S를 입력해주세요. ")
 if D_or_S == 'D':
     classes_dict= debris_dict()
@@ -25,6 +26,8 @@ def ratio_of_objects(objects):
     maxratio = 0
     for o in range(len(objects['shapes'])):
         label = objects['shapes'][o]['label']
+        objects['shapes'][o]['Size'] = 0
+        objects['shapes'][o]['Weight'] = 0
         points = np.array(objects['shapes'][o]['points'])
         # bbx
         if objects['shapes'][o]['shape_type'] == 'rectangle':
@@ -53,32 +56,32 @@ def classify_distance_4_debris(maxratio):
 
 def classify_distance_4_seaanimal(maxratio, maxlabel):
     if maxlabel == 'Asterias_amurensis':
-        farratio = 0.9
-        nearratio = 8.09
+        farratio = 5.7
+        nearratio = 22.8
     elif maxlabel == 'Asterina_pectinifera':
-        farratio = 0.38
-        nearratio = 3.39
+        farratio = 2.4
+        nearratio = 9.5
     elif maxlabel == 'Conch':
-        farratio = 0.06
-        nearratio = 0.5
+        farratio = 0.7
+        nearratio = 2.9
     elif maxlabel == 'Ecklonia_cava':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Heliocidaris_crassispina':
-        farratio = 0.2
-        nearratio = 1.78
+        farratio = 1.6
+        nearratio = 6.3
     elif maxlabel == 'Hemicentrotus':
-        farratio = 0.6
-        nearratio = 0.7
+        farratio = 0.7
+        nearratio = 2.9
     elif maxlabel == 'Sargassum':
         farratio = 0
         nearratio = 0
     elif maxlabel == 'Sea_hare':
-        farratio = 0.84
-        nearratio = 7.53
+        farratio = 2.7
+        nearratio = 10.8
     elif maxlabel == 'Turbo_cornutus':
-        farratio = 0.27
-        nearratio = 2.43
+        farratio = 2.2
+        nearratio = 8.6
     if maxratio <= farratio:
         return 'Far'
     elif (maxratio <= nearratio) and (maxratio > farratio): 
@@ -86,7 +89,7 @@ def classify_distance_4_seaanimal(maxratio, maxlabel):
     elif maxratio > nearratio:
         return 'Near'
         
-for path, dirs, files in os.walk('C:/Dataset/ori/Bbox/Attr_errors/Bbox'):
+for path, dirs, files in os.walk(running_path):
     for item in files:
         if item[-5:] == '.json':
             objects = getjson(path + '/' + item)
@@ -124,3 +127,4 @@ for path, dirs, files in os.walk('C:/Dataset/ori/Bbox/Attr_errors/Bbox'):
             with open(path + '/' + item, 'w') as j:
                 json.dump(objects, j, indent='\t')
                 j.close()
+                

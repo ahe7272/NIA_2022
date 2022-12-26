@@ -8,13 +8,14 @@ def getjson(jsonfile):
         Jsonfile.close()
     return objects
 
-for (path, dir, files) in os.walk('C:/Users/Administrator/Downloads/9_4_Sea_bbox'): 
+running_path = input('경로: ')
+for (path, dir, files) in os.walk(running_path): 
     for item in files:
         if item[-5:] == '.json':
             objects = getjson(path + '/' + item)
-            objects['Source_video'] = '_'.join(item.split('_')[:3]) + '.mp4'
-            objects['Video_time'] = str(datetime.timedelta(seconds= ((int(item.split('_')[3].split('.')[0])*2)-2)))
-            objects['Frame_no'] = (int(item.split('_')[3].split('.')[0])-1)*2*60
+            objects['Source_video'] = '_'.join(item.split('_')[4:-1]) + '.mp4'
+            objects['Video_time'] = str(datetime.timedelta(seconds= ((int(item.split('_')[-1].split('.')[0])*2)-2)))
+            objects['Frame_no'] = (int(item.split('_')[-1].split('.')[0])-1)*2*60
             with open(path + '/' + item, 'w') as j:
                 json.dump(objects, j, indent='\t')
                 j.close()

@@ -5,7 +5,7 @@ import openpyxl
 
 excel_path = input('파일명 리스트 엑셀 파일 경로를 입력해주세요. ')
 to_path = input('속성을 변경할 파일이 있는 폴더 경로를 입력해주세요. ')
-from_path = input('속성을 가져올 파일이 있는 폴더 경로를 입력해주세요. ')
+# from_path = input('속성을 가져올 파일이 있는 폴더 경로를 입력해주세요. ')
 
 wb = openpyxl.load_workbook(excel_path)
 ws1 = wb['Sheet1']
@@ -16,19 +16,29 @@ def getjson(jsonfile):
         Jsonfile.close()
     return objects
 
-for row in range(2, ws1.max_row+1):
-    # print(from_path + '/'  + ws1.cell(row,1).value[:-4] + '.json')
-    # break
-    # if os.path.isfile(from_path + '/' + ws1.cell(row,1).value[:-4] + '.json'):
-        from_objects = getjson(from_path + '/' + ws1.cell(row,1).value[:-4] + '.json')
-        to_objects = getjson(to_path + '/' + ws1.cell(row,2).value[:-4] + '.json')
-        to_objects['Longitude'] = from_objects['Longitude'] 
-        to_objects['Latitude'] = from_objects['Latitude']
-        print('From: ', from_objects['Longitude'], from_objects['Latitude'])
-        print('To: ', to_objects['Longitude'], to_objects['Latitude'])
-        # with open(to_path + '/' + + ws1.cell(row,2).value, 'w') as j:
-        #     json.dump(to_objects, j, indent='\t')
-        #     j.close()
+data = {}
+for row in range(1, ws1.max_row):
+    try:
+        data[ws1.cell(row,4).value] = [ws1.cell(row,5).value, ws1.cell(row,6).value] 
+    except:
+        continue
+
+for (path, dir, files) in os.walk(to_path): 
+    for item in files:
+        if item[-5:] == '.json':
+            if ('_'.join(item.split('_')[2:-1])) in data.keys():
+                objects = getjson(to_path + '/' + item)
+                objects['Longitude'] = data['_'.join(item.split('_')[2:-1])][0]
+                objects['Latitude'] = data['_'.join(item.split('_')[2:-1])][1]
+                # print(objects['Longitude'], objects['Latitude'])
+    #     to_objects = getjson(to_path + '/' + ws1.cell(row,2).value[:-4] + '.json')
+    #     to_objects['Longitude'] = from_objects['Longitude'] 
+    #     to_objects['Latitude'] = from_objects['Latitude']
+    #     print('From: ', from_objects['Longitude'], from_objects['Latitude'])
+    #     print('To: ', to_objects['Longitude'], to_objects['Latitude'])
+                with open(to_path + '/' + item,  'w') as j:
+                    json.dump(objects, j, indent='\t')
+                    j.close()
 
 # addfrom_path = 'D:/1st_Original/Bbox'
 # addto_path = 'D:/1st_Original/Test/Polygon'

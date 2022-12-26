@@ -2,10 +2,7 @@ import json
 import os 
 import pandas as pd
 
-running_path = input('경로: ')
-b_or_p = 'Bbox'
-new_or_old = '2020'
-
+running_path = 'D:/6th_check_sea/Boundingbox'
 
 def getjson(jsonfile):
     with open(jsonfile) as Jsonfile:
@@ -13,18 +10,9 @@ def getjson(jsonfile):
         Jsonfile.close()
     return objects
 
-# Originals 폴더 내 사진 명 일괄 통일 작업
-# for (root, dir, files) in os.walk(running_path + ' Originals'): 
-#     for item in files:
-#         new_name = ''.join(item.split('Original_'))
-#         old = root + '/' + item
-#         new = root + '/' + new_name
-#         os.rename(old, new)
-
 change_log = {}
 original = []
 new = []
-cnt = 169721
 for (path, dir, files) in os.walk(running_path): 
     if path.split('\\')[-1].split(' ')[-1] == 'Originals':
         continue
@@ -36,7 +24,13 @@ for (path, dir, files) in os.walk(running_path):
             new_jpg = path + '/' + name + '.jpg'
             old_json = path + '/' + item
             new_json = path + '/' + name + '.json'
-            old_original = path + ' Originals/' + item[:-5] + '.jpg'
+            # if ''.join(old_jpg.split('_')[2:])[0] in ['0', '1']:
+            #     old_original = path + ' Originals/' + ''.join(old_jpg.split('_')[2:])[:-4] + '.jpg'
+            # else:
+            # old_original = path + ' Originals/' + old_jpg.split('/')[-1][:-4] + '.jpg'
+
+            old_original = path + ' Originals/' + '_'.join(old_jpg.split('_')[4:])[:-4] + '.jpg'
+            # print(old_original)
             new_original = path + ' Originals/' + name + '.jpg'
             original += [old_jpg.split('/')[-1]]
             new += [new_jpg.split('/')[-1]]
@@ -56,4 +50,4 @@ change_log['New'] = new
 df = pd.DataFrame(change_log)
 df.set_index('Old', inplace = True)
 
-df.to_csv(running_path + '/24th_Name_change_log_b.csv')
+df.to_csv(running_path + '/Name_change_log_b.csv')

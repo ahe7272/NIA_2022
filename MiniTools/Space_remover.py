@@ -7,16 +7,20 @@ def getjson(jsonfile):
         Jsonfile.close()
     return objects
 
-for (path, dir, files) in os.walk('C:/Users/Administrator/Downloads/8_4'): 
+running_path = input('경로: ')
+
+for (path, dir, files) in os.walk(running_path): 
     for item in files:
-        space_removed = ''.join(item.split(' '))
+        space_removed = '_'.join(item.split(' '))
+        # Original_removed = space_removed.split('Original_')[-1]
+
         old = path + '/' + item
         new = path + '/' + space_removed
         os.rename(old, new)
-        if new[-5:] == '.json':
-            objects = getjson(new)
-            objects['imagePath'] = space_removed[:-5] + '.jpg'
-            with open(new, 'w') as j:
-                json.dump(objects, j, indent='\t')
-                j.close()
+        # if new[-5:] == '.json':
+        #     objects = getjson(new)
+        #     objects['imagePath'] = space_removed[:-5] + '.jpg'
+        #     with open(new, 'w') as j:
+        #         json.dump(objects, j, indent='\t')
+        #         j.close()
                 

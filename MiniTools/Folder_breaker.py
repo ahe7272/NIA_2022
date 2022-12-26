@@ -1,10 +1,11 @@
 import os
 import shutil
 
-for (path, dir, files) in os.walk('D:/To_original/5th'):
+running_path = input('경로 : ')
+for (path, dir, files) in os.walk(running_path):
     for item in files:
         try:
-            shutil.move(path + '/'+item, 'D:/To_original/5th/' + item)
+            shutil.move(path + '/' + item, running_path + '/' + item)
         except:
             print(path + '/' + item)
             break
