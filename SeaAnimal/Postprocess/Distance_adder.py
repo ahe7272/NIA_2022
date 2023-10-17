@@ -1,81 +1,68 @@
+"""
+데이터셋 유지보수를 위한 리펙토링 버전
+
+1) 조건문의 구조 간결화를 통한 가독성 개선
+2) 함수명을 Camel CAse로 변경
+3) 데이터를 딕셔너리로 관리하여 코드 중복 개선
+"""
+
 import json
-import os
 import numpy as np
-from classes import sea_animal_dict
+from classes import seaAnimalDict
 
-def getjson(jsonfile):
-    with open(jsonfile) as j:
-        objects = json.load(j)
-    return objects
+def loadJson(jsonFile):
+    with open(jsonFile, 'r') as j:
+        return json.load(j)
 
-classes_dict= sea_animal_dict()
+classesDict = seaAnimalDict()
 
-# 이미지내 객체 비율
-def ratio_of_objects(objects):
-    height = objects['imageHeight']
-    width = objects['imageWidth']
-    imagesize = height * width 
-    label_with_ratio = [] 
-    maxratio = 0
-    for o in range(len(objects['shapes'])):
-        label = objects['shapes'][o]['label']
-        points = np.array(objects['shapes'][o]['points'])
-        # bbx
-        if objects['shapes'][o]['shape_type'] == 'rectangle':
-            object_width = abs(points[0, 0] - points[1, 0])
-            object_height = abs(points[0, 1] - points[1, 1])
-        # polygon
-        else:
+def calculateRatio(objects):
+    imageArea = objects['imageHeight'] * objects['imageWidth']
+    maxRatio = 0
+    labelWithRatio = []
+
+    for shape in objects['shapes']:
+        points = np.array(shape['points'])
+
+        if shape['shape_type'] == 'rectangle':
+            objectWidth = abs(points[0, 0] - points[1, 0])
+            objectHeight = abs(points[0, 1] - points[1, 1])
+        else:  # polygon
             y = points[:, 0]
             x = points[:, 1]
-            object_height = max(y) - min(y)    
-            object_width = max(x) - min(x)     
+            objectHeight = max(y) - min(y)
+            objectWidth = max(x) - min(x)
 
-        object_size = object_height * object_width
-        if maxratio < (object_size / imagesize * 100):
-            maxratio = (object_size / imagesize * 100)
-        label_with_ratio.append((label, object_size / imagesize * 100))
-    return maxratio, label_with_ratio 
+        objectRatio = (objectHeight * objectWidth) / imageArea * 100
+        maxRatio = max(maxRatio, objectRatio)
+        labelWithRatio.append((shape['label'], objectRatio))
 
-def classify_distance_4_debris(maxratio):
-    if maxratio <= 20:
+    return maxRatio, labelWithRatio
+
+def classifyDistanceForDebris(maxRatio):
+    if maxRatio <= 20:
         return 'Far'
-    elif (maxratio <= 60) and (maxratio > 20): 
+    elif maxRatio <= 60:
         return 'Mid'
-    elif maxratio > 60:
-        return 'Near'
+    return 'Near'
 
-def classify_distance_4_seaanimal(maxratio, maxlabel):
-    if maxlabel == 'Asterias_amurensis':
-        farratio = 0.9
-        nearratio = 8.09
-    elif maxlabel == 'Asterina_pectinifera':
-        farratio = 0.38
-        nearratio = 3.39
-    elif maxlabel == 'Conch':
-        farratio = 0.06
-        nearratio = 0.5
-    elif maxlabel == 'Ecklonia_cava':
-        farratio = 0
-        nearratio = 0
-    elif maxlabel == 'Heliocidaris_crassispina':
-        farratio = 0.2
-        nearratio = 1.78
-    elif maxlabel == 'Hemicentrotus':
-        farratio = 0.7
-        nearratio = 0.6
-    elif maxlabel == 'Sargassum':
-        farratio = 0
-        nearratio = 0
-    elif maxlabel == 'Sea_hare':
-        farratio = 0.84
-        nearratio = 7.53
-    elif maxlabel == 'Turbo_cornutus':
-        farratio = 0.27
-        nearratio = 2.43
-    if maxratio <= farratio:
+def classifyDistanceForSeaAnimal(maxRatio, maxLabel):
+    animalRatios = {
+        'Asterias_amurensis': (0.9, 8.09),
+        'Asterina_pectinifera': (0.38, 3.39),
+        'Conch': (0.06, 0.5),
+        'Ecklonia_cava': (0, 0),
+        'Heliocidaris_crassispina': (0.2, 1.78),
+        'Hemicentrotus': (0.7, 0.6),
+        'Sargassum': (0, 0),
+        'Sea_hare': (0.84, 7.53),
+        'Turbo_cornutus': (0.27, 2.43)
+    }
+
+    farRatio, nearRatio = animalRatios.get(maxLabel, (0, 0))
+
+    if maxRatio <= farRatio:
         return 'Far'
-    elif (maxratio <= nearratio) and (maxratio > farratio): 
+    elif maxRatio <= nearRatio:
         return 'Mid'
-    elif maxratio > nearratio:
-        return 'Near'
+    return 'Near'
